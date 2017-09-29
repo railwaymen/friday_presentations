@@ -1,0 +1,203 @@
+<section>
+
+<h3>Speed up rspec tests - part1</h3>
+
+<p>Kamil Baćkowski</p>
+
+</section>
+<section>
+
+<h2>Example feature spec</h2>
+<pre><code class="language-ruby">describe 'Lists', type: :feature, js: true do
+  before do
+    # time consuming setup which takes about 6s
+  end
+
+  # each it takes about 1 second
+  it 'should be able to browse lists' do
+  end
+
+  it 'should be able to edit a list' do
+  end
+
+  it 'should be able to add companies to list' do
+  end
+
+  it 'should be able to remove companies from list' do
+  end
+
+  it 'should be able to delete a list' do
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>How long it takes ?</h2>
+<pre><code>rspec spec/features/lists_spec.rb
+
+.....
+
+Finished in 35.34 seconds (files took 9.99 seconds to load)
+5 examples, 0 failures
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>How to speed up ?</h2>
+
+<p>We can combine all tests cases into one so that before hook will execute only once.</p>
+
+<pre><code class="language-ruby">describe 'Lists', type: :feature, js: true do
+  before do
+    # time consuming setup which takes about 6s
+  end
+
+  it "should be able to manage lists" do
+    #should be able to edit a list
+    ...
+    #should be able to add companies to list
+    ...
+    #should be able to remove companies from list
+    ...
+    #should be able to delete a list
+    ...
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>We can do it better!</h2>
+
+<p>Use aggregate_failures from rspec</p>
+
+<pre><code class="language-ruby">require 'spec_helper'
+
+describe 'Lists', type: :feature, js: true do
+  before do
+    # time consuming setup which takes about 6s
+  end
+
+  it 'should be able to manage lists' do
+    aggregate_failures 'should be able to browse lists' do
+    end
+
+    aggregate_failures 'should be able to edit a list' do
+    end
+
+    aggregate_failures 'should be able to add companies to list' do
+    end
+
+    aggregate_failures 'should be able to remove companies from list' do
+    end
+
+    aggregate_failures 'should be able to delete a list' do
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>How long it takes ?</h2>
+<pre><code>rspec spec/features/lists_spec.rb
+
+.
+
+Finished in 11.23 seconds (files took 9.99 seconds to load)
+1 example, 0 failures
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Pros &amp; Cons</h2>
+<ul>
+  <li>Tests runs 3x times faster</li>
+  <li>Tests becomes dependant on each other</li>
+</ul>
+
+</section>
+<section>
+
+<h2>What happens when some test fails ?</h2>
+
+<ul>
+  <li>By default all next aggregate_failures within block will not execute</li>
+  <li>We can change this by adding aggregate_failures metadata and then all aggregate_failures will be executed and rspec will report all errors.</li>
+</ul>
+
+</section>
+<section>
+
+<h2>What about controllers ?</h2>
+
+<pre><code class="language-ruby">describe CompanyOfficesController, type: :controller do
+  describe '#create' do
+    it 'validates params' do
+      sign_in user
+      post :create, name: ''
+      expect(response).to render_template('new')
+      expect(flash[:error]).not_to be_nil
+    end
+
+    it 'creates record when params are valid' do
+      sign_in user
+      expect do
+        post :create, name: 'My office'
+      end.to change(CompanyOffice, :count).by 1
+    end
+
+    it 'creates record when params are valid and redirect to index' do
+      sign_in user
+      post :create, name: 'My office'
+      expect(response).to redirect_to(company_offices_path)
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>Using aggregate_failures</h2>
+
+<pre><code class="language-ruby">describe CompanyOfficesController, type: :controller do
+  describe '#create' do
+    it 'creates office' do
+      sign_in user
+
+      aggregate_failures 'validates params' do
+        post :create, name: ''
+        expect(response).to render_template('new')
+        expect(flash[:error]).not_to be_nil
+      end
+
+      aggregate_failures 'creates record when params are valid and redirect' do
+        expect do
+          post :create, name: 'My office'
+        end.to change(CompanyOffice, :count).by 1
+        expect(response).to redirect_to(company_offices_path)
+      end
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+
+<p>I encourage to use this for all features specs and some controller specs which uses the same setup.</p>
+
+<p>Questions ?</p>
+
+</section>
