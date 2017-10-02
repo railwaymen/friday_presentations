@@ -1,0 +1,425 @@
+<section>
+
+<h3>Multithreading in iOS (2)</h3>
+
+<p>Bartosz Polaczyk</p>
+
+</section>
+<section>
+
+<h2>Agenda</h2>
+
+<ul>
+  <li>Recap</li>
+  <li>Promise</li>
+  <li>RxSwift</li>
+  <li>Async/Await</li>
+</ul>
+
+</section>
+<section>
+
+<h2>Recap</h2>
+
+</section>
+<section>
+
+<h2>Recap - async Operation</h2>
+
+<pre><code class="language-swift">class AsyncOperation: Foundation.Operation {
+    
+    private var _executing = false
+    private var _finished = false
+    
+    override internal(set) var isExecuting: Bool {
+        get {
+            return _executing
+        }
+        set {
+            if _executing != newValue {
+                willChangeValue(forKey: "isExecuting")
+                _executing = newValue
+                didChangeValue(forKey: "isExecuting")
+            }
+        }
+    }
+    
+    override internal(set) var isFinished: Bool {
+        get {
+            return _finished
+        }
+        set {
+            if _finished != newValue {
+                willChangeValue(forKey: "isFinished")
+                _finished = newValue
+                didChangeValue(forKey: "isFinished")
+            }
+        }
+    }
+    
+
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Recap - async Operation (2)</h2>
+
+<pre><code class="language-swift">    override var isAsynchronous: Bool {
+        return true
+    }
+
+    override func start() {
+        if isCancelled {
+            isFinished = true
+            isExecuting = false
+            return
+        }
+        isExecuting = true
+        
+        let session = URLSession.shared
+        session.dataTask(with: URL(string: "https://httpbin.org/ip")!) { (data, response, error) in
+            if self.isCancelled {
+                self.isFinished = true
+                self.isExecuting = false
+                return
+            }
+            if let data = data {
+                print(String(data: data, encoding: String.Encoding.utf8))
+            }
+            
+            self.isExecuting = false
+            self.isFinished = true
+        }.resume()
+    }
+}
+let queue = OperationQueue()
+queue.addOperation(AsyncOperation())
+</code></pre>
+
+</section>
+<section>
+
+<h2>Scenario</h2>
+<p><img src="../images/scenario.png" alt=""></p>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+<pre><code class="language-swift">import PromiseKit
+
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+
+URLSession.shared.dataTask(with: urlRequest)
+.then { json in
+    print (json)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+<pre><code class="language-swift">import PromiseKit
+
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+
+URLSession.shared.dataTask(with: urlRequest)
+.then { json in
+    let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+
+    return URLSession.shared.dataTask(with: secondUrlRequest)
+}.then { json in
+    print (json)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+<pre><code class="language-swift">import PromiseKit
+
+let urlRequest = URLRequest(url: URL(string: "https://httpbin2.org/ip")!)
+
+URLSession.shared.dataTask(with: urlRequest)
+.then { json in
+    let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin2.org/anything")!)
+
+    return URLSession.shared.dataTask(with: secondUrlRequest)
+}.then { json in
+    print (json)
+}.catch { error in
+    print (error)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+<pre><code class="language-swift">import PromiseKit
+
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+
+URLSession.shared.dataTask(with: urlRequest)
+.then { json in
+    let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+
+    return URLSession.shared.dataTask(with: secondUrlRequest)
+}.then { json in
+    print (json)
+}.always {
+    
+}.catch { error in
+    print (error)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Existing World</h2>
+
+<pre><code class="language-swift">
+makeNetworkRequest(url, completionHandler)
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Expected Promise</h2>
+
+<pre><code class="language-swift">
+dataTask(url) -&gt; URLDataPromise
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Creating a Promise</h2>
+
+<pre><code class="language-swift">
+class URLSession{
+    func dataTask(with request: URLRequest) -&gt; URLDataPromise { 
+	return Promise { fulfill, reject in
+
+	// non-promise realm
+			makeNetworkRequest(request, completionHandler:{ response in
+				if (response.isOK){
+					fullfill(response);
+				}else{
+					reject(response.error)
+				}
+			})
+		}
+	}
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Scenario</h2>
+<p><img src="../images/scenario.png" alt=""></p>
+
+</section>
+<section>
+
+<h2>RxSwift</h2>
+
+</section>
+<section>
+
+<h2>RxSwift</h2>
+
+<pre><code class="language-swift">
+import RxCocoa
+
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+
+URLSession.shared.rx.json(request: urlRequest)
+    .subscribe { json in
+        print(json)
+    }
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>RxSwift</h2>
+
+<pre><code class="language-swift">
+URLSession.shared.rx.json(request: urlRequest)
+    .flatMap { json -&gt; Observable&lt;Any&gt; in
+        let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+        return URLSession.shared.rx.json(request: secondUrlRequest)
+    }.subscribe { json in
+        print(json)
+    }
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>RxSwift</h2>
+
+<pre><code class="language-swift">
+URLSession.shared.rx.json(request: urlRequest)
+    .flatMap { json -&gt; Observable&lt;Any&gt; in
+        let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+        return URLSession.shared.rx.json(request: secondUrlRequest)
+    }.subscribe(onNext: { json in
+        print(json)
+    }, onError:{ error in
+        print (error)
+    })
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Promise</h2>
+
+<pre><code class="language-swift">
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+
+URLSession.shared.dataTask(with: urlRequest).then { json in
+    let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+    return URLSession.shared.dataTask(with: secondUrlRequest)
+}.then { json in
+    print (json)
+}.catch { error in
+    print (error)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>The Ultimate solution</h2>
+
+</section>
+<section>
+
+<h2>The Ultimate solution</h2>
+
+<pre><code class="language-swift">
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+let firstResponse = URLSession.shared.dataTask(with: urlRequest)
+...
+let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+let secondResponse = secondURLSession.shared.dataTask(with: secondUrlRequest)
+...
+print (secondResponse)
+
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Async/await</h2>
+
+</section>
+<section>
+
+<h2>Async/await</h2>
+
+<pre><code class="language-swift">
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+await let firstResponse = URLSession.shared.dataTask(with: urlRequest)
+let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+await let secondResponse = secondURLSession.shared.dataTask(with: secondUrlRequest)
+print (secondResponse)
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Async/await</h2>
+
+<pre><code class="language-swift">
+async func makeTwoRequests() { 
+	let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+	await let firstResponse = URLSession.shared.dataTask(with: urlRequest)
+	let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+	await let secondResponse = secondURLSession.shared.dataTask(with: secondUrlRequest)
+	print (secondResponse)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Async/await error handling</h2>
+
+<pre><code class="language-swift">
+async func makeTwoRequests() throws { 
+	let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+	await let firstResponse = try URLSession.shared.dataTask(with: urlRequest)
+	let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+	await let secondResponse = try secondURLSession.shared.dataTask(with: secondUrlRequest)
+	print (secondResponse)
+}
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>The Ultimate solution</h2>
+
+<pre><code class="language-swift">
+let urlRequest = URLRequest(url: URL(string: "https://httpbin.org/ip")!)
+let firstResponse = URLSession.shared.dataTask(with: urlRequest)
+...
+let secondUrlRequest = URLRequest(url: URL(string: "https://httpbin.org/anything")!)
+let secondResponse = secondURLSession.shared.dataTask(with: secondUrlRequest)
+...
+print (secondResponse)
+
+
+</code></pre>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+
+<ul>
+  <li>Promises</li>
+  <li>Reactive Programming (RxSwift)</li>
+  <li>Async/await</li>
+</ul>
+
+</section>
+<section>
+
+<p>Thank you!</p>
+
+</section>
