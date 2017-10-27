@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+  <head prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# article: http://ogp.me/ns/article#">
+    <meta charset="utf-8">
+
+<title>Slides</title>
+
+<meta name="description" content="">
+<meta name="author" content="">
+<meta name="generator" content="reveal-ck 3.8.0">
+
+
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+<link rel="stylesheet" href="css/reveal.css">
+<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+<!-- Code syntax highlighting -->
+<link rel="stylesheet" href="lib/css/zenburn.css">
+
+<link rel="stylesheet" href="css/reveal-ck.css">
+
+<link rel="stylesheet" href="css/railwaymen.css">
+
+<!-- Printing and PDF exports -->
+<script>
+  var link = document.createElement( 'link' );
+  link.rel = 'stylesheet';
+  link.type = 'text/css';
+  link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+  document.getElementsByTagName( 'head' )[0].appendChild( link );
+</script>
+
+<!--[if lt IE 9]>
+<script src="lib/js/html5shiv.js"></script>
+<![endif]-->
+
+  </head>
+
+  <body>
+    <div class="reveal">
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+    <section>
+
+<h3>Best practises</h3>
+
+<p>Kamil Baćkowski</p>
+
+</section>
+<section>
+
+<h3>Databases</h3>
+
+<p>Foreign key constraints</p>
+
+<pre><code class="language-ruby">create_table :posts do |t|
+  t.references :user, foreign_key: true, index: true, null: false
+end
+</code></pre>
+
+<p>Not null constraints</p>
+<pre><code class="language-ruby">create_table :comments do |t|
+  t.text :body, null: false
+  t.boolean :published, null: false, default: false # usually we should add not null for boolean fields
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Nil exceptions</h3>
+
+<p>How to properly fix “undefined method `email’ for nil:NilClass”</p>
+
+<p>Problem :</p>
+
+<pre><code>&lt;div&gt;@comment.user.email&lt;/div&gt;
+</code></pre>
+
+<p>Fix :</p>
+
+<pre><code># migrate the invalid data by either removing comments without user or try to assign comments to i.e. post owner
+# ...
+change_column_null :comments, :user_id, false
+</code></pre>
+
+</section>
+<section>
+
+<h3>Enum columns</h3>
+
+<pre><code class="language-ruby">class User &lt; ApplicationRecord
+  enum status: [:pending, :approved]
+end
+</code></pre>
+
+<p>Use instead :</p>
+
+<pre><code class="language-ruby">class User &lt; ApplicationRecord
+  enum status: { pending: 'pending', approved: 'approved' }
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Avoid useless metaprogramming</h3>
+
+<pre><code class="language-ruby">class User &lt; ApplicationRecord
+  class &lt;&lt; self
+    %w(pending approved).each do |type|
+      define_method("#{type}_only") do
+        where(status: type)
+      end
+    end
+  end
+end
+</code></pre>
+
+<p>vs</p>
+
+<pre><code class="language-ruby">class User &lt; ApplicationRecord
+  def self.pending_only
+    where(status: :pending)
+  end
+
+  def self.approved_only
+    where(status: :approved)
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>ActiveRecord callbacks</h3>
+
+<pre><code class="language-ruby">class Company &lt; ApplicationRecord
+  belongs_to :user
+  has_many :roles
+  has_one :setting
+  has_one :subscription
+
+  after_create :create_roles
+  after_create :create_subscription!
+  after_create :create_setting!
+
+  def create_roles
+    roles.create! user: user, name: :owner
+  end
+end
+</code></pre>
+<p>vs</p>
+
+<pre><code class="language-ruby">class CreateCompany
+  def initialize(user)
+    @user = user
+  end
+
+  def call
+    Company.create!(user: @user).tap do |company|
+      company.create_setting!
+      company.create_subscription!
+      company.roles.create! user: @user, name: :owner
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>ActiveRecord callbacks</h3>
+
+<p>However callbacks should be used as long as they don’t touch other records or business logic</p>
+
+<pre><code class="language-ruby">class Company &lt; ApplicationRecord
+  before_create :generate_unique_token
+  before_save :strip_name
+
+  def strip_name
+    self.name = name.strip
+  end
+
+  def generate_unique_token
+    self.token = SecureRandom.hex
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Transactions</h3>
+
+<pre><code class="language-ruby">def create
+  current_user.create_company!.tap do |company|
+    company.create_setting!
+    company.create_subscription!
+    company.roles.create! user: current_user, name: :owner # this raises validation error
+  end
+end
+</code></pre>
+
+<p>Result will be a company without role.</p>
+
+<pre><code>Processing by CompaniesController#create as HTML
+   (0.1ms)  begin transaction
+  SQL (0.9ms)  INSERT INTO "companies" ("user_id") VALUES (?)  [["user_id", 8]]
+   (118.3ms)  commit transaction
+  Company Load (0.1ms)  SELECT  "companies".* FROM "companies" WHERE "companies"."user_id" = ? LIMIT ?  [["user_id", 8], ["LIMIT", 1]]
+   (0.1ms)  begin transaction
+  SQL (0.3ms)  INSERT INTO "settings" ("company_id") VALUES (?)  [["company_id", 16]]
+   (127.3ms)  commit transaction
+  Setting Load (0.2ms)  SELECT  "settings".* FROM "settings" WHERE "settings"."company_id" = ? LIMIT ?  [["company_id", 16], ["LIMIT", 1]]
+   (0.1ms)  begin transaction
+  SQL (0.5ms)  INSERT INTO "subscriptions" ("company_id") VALUES (?)  [["company_id", 16]]
+   (112.5ms)  commit transaction
+  Subscription Load (0.3ms)  SELECT  "subscriptions".* FROM "subscriptions" WHERE "subscriptions"."company_id" = ? LIMIT ?  [["company_id", 16], ["LIMIT", 1]]
+   (0.1ms)  begin transaction
+   (0.1ms)  rollback transaction
+</code></pre>
+
+</section>
+<section>
+
+<h3>Transactions</h3>
+
+<pre><code class="language-ruby">def create
+  Company.transaction do
+    current_user.create_company!.tap do |company|
+      company.create_setting!
+      company.create_subscription!
+      company.roles.create! user: current_user, name: :owner # this raises validation error
+    end
+  end
+end
+</code></pre>
+
+<p>Or even better:</p>
+
+<pre><code class="language-ruby">around_action :with_transaction
+
+def create
+  current_user.create_company!.tap do |company|
+    company.create_setting!
+    company.create_subscription!
+    company.roles.create! user: current_user, name: :owner # this raises validation error
+  end
+end
+
+private
+
+def with_transaction(&amp;block)
+  ActiveRecord::Base.transaction(&amp;block)
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Gems</h3>
+
+<p>Do not require gem by default if it’s not needed</p>
+
+<pre><code class="language-ruby">gem 'twilio', require: false
+</code></pre>
+
+<pre><code class="language-ruby"># file: lib/send_sms.rb
+require 'twilio'
+
+class SendSms
+  def self.call(phone_number:, body:)
+    #send sms using twilio gem
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Gems</h3>
+
+<p>Think twice before adding gem which functionality can be easily implemented from scratch</p>
+
+<p>Example of gems that should be replaced by own implementation:</p>
+<ul>
+  <li>acts_as_commentable</li>
+  <li>acts-as-taggable-on</li>
+  <li>acts_as_follower</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Ruby variables</h3>
+
+<p>Name variables according to their type &amp; context:</p>
+
+<pre><code class="language-ruby">post
+# vs
+post_body # because we have string inside
+</code></pre>
+<pre><code class="language-ruby">pages
+# vs
+pages_count # because we have number inside
+</code></pre>
+<pre><code class="language-ruby">comment_id
+# vs
+comment_ids # because we have array inside
+</code></pre>
+
+</section>
+<section>
+
+<h3>RoR tips</h3>
+
+<pre><code class="language-ruby">user.comments.map(&amp;:id)
+# vs
+user.comment_ids
+</code></pre>
+<pre><code class="language-ruby">comment.user.id
+# vs
+comment.user_id
+</code></pre>
+<pre><code class="language-ruby">user.comments.map { |c| c.body }
+# vs
+user.comments.map(&amp;:body)
+</code></pre>
+<pre><code class="language-ruby">user_admin = UserAdmin.first
+# vs
+user_admin = UserAdmin.first!
+</code></pre>
+
+</section>
+<section>
+
+<h3>Organize JS</h3>
+
+<pre><code class="language-javascript"># file: app/assets/javascripts/calendar.coffee
+window.Calendar = {
+  initialize: -&gt;
+    @_initializeDateInputs()
+    @_initializeNavigationActions()
+
+  _initializeDateInputs: -&gt;
+    @('#calendar .date-inputs').datepicker()
+    ...
+
+  _initializeNavigationActions: -&gt;
+    ...
+
+# file: app/assets/javascripts/application.js
+//= require calendar
+</code></pre>
+
+<pre><code class="language-html">&lt;div id="calendar"&gt;
+  ...
+&lt;/div&gt;
+
+:coffescript
+  Calendar.initialize()
+</code></pre>
+
+</section>
+<section>
+
+<h3>Jquery selectors</h3>
+
+<pre><code class="language-javascript">$('#sign_up_form').on 'submit', -&gt;
+  ...
+</code></pre>
+
+<p>Create simple exists() function and use it:</p>
+
+<pre><code class="language-javascript">$.fn.exists = -&gt;
+  if !@length
+    throw new Error("No elements matched by " + @selector)
+  return @
+</code></pre>
+
+<pre><code class="language-javascript">$('#sign_up_form').exists().on 'submit', -&gt;
+  ...
+</code></pre>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+
+<p>Questions ?</p>
+
+</section>
+
+  </div>
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+
+<script>
+  (function() {
+  function extend( a, b ) {
+    for(var i in b) {
+      a[i] = b[i];
+    }
+  }
+  var baseOptions = {
+    transition: 'default',
+
+    dependencies: [
+      { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+      { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+      { src: 'plugin/zoom-js/zoom.js', async: true },
+      { src: 'plugin/notes/notes.js', async: true }
+    ]
+  };
+
+  
+
+  var configOptions = {"controls":true,"progress":true,"history":true,"center":true}
+  var initializeOptions = {};
+  extend(initializeOptions, baseOptions);
+  extend(initializeOptions, configOptions);
+  Reveal.initialize(initializeOptions);
+})();
+
+</script>
+
+  </body>
+</html>
