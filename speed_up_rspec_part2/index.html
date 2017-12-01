@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# article: http://ogp.me/ns/article#">
+    <meta charset="utf-8">
+
+<title>Slides</title>
+
+<meta name="description" content="">
+<meta name="author" content="">
+<meta name="generator" content="reveal-ck 3.8.0">
+
+
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+<link rel="stylesheet" href="css/reveal.css">
+<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+<!-- Code syntax highlighting -->
+<link rel="stylesheet" href="lib/css/zenburn.css">
+
+<link rel="stylesheet" href="css/reveal-ck.css">
+
+<link rel="stylesheet" href="css/railwaymen.css">
+
+<!-- Printing and PDF exports -->
+<script>
+  var link = document.createElement( 'link' );
+  link.rel = 'stylesheet';
+  link.type = 'text/css';
+  link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+  document.getElementsByTagName( 'head' )[0].appendChild( link );
+</script>
+
+<!--[if lt IE 9]>
+<script src="lib/js/html5shiv.js"></script>
+<![endif]-->
+
+  </head>
+
+  <body>
+    <div class="reveal">
+  <!-- Any section element inside of this container is displayed as a slide -->
+  <div class="slides">
+    <section>
+
+<h3>Speed up rspec tests - part2</h3>
+
+<p>Kamil Baćkowski</p>
+
+</section>
+<section>
+
+<h3>Our relations</h3>
+
+<p><img src="images/relations_diagram.png" alt="Relations diagram"></p>
+
+</section>
+<section>
+
+<h3>1. Factory associations</h3>
+
+<pre><code class="language-ruby">FactoryGirl.define do
+  factory :user do
+    company
+  end
+
+  factory :company do
+    subscription
+  end
+
+  factory :subscription do
+  end
+
+  factory :post do
+    user
+  end
+
+  factory :comment do
+    post
+    user
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Example spec with factories</h3>
+
+<pre><code class="language-ruby">describe PostsController, type: :controller do
+  render_views
+  let(:user) { create(:user) }
+  let(:post) { create(:post) }
+  let(:comment) { create(:comment, post: post) }
+
+  describe '#show' do
+    it 'renders post with comments' do
+      post
+      comment
+      login_as user
+      get :show, params: { id: post.id }
+      # expect ...
+    end
+  end
+end
+
+</code></pre>
+
+<p>How many companies, subscriptions &amp; users ?</p>
+
+<pre class="fragment"><code>3 users, 3 companies and 3 subscriptions
+</code></pre>
+
+</section>
+<section>
+
+<h3>How to fix this ?</h3>
+
+<pre><code class="language-ruby">describe PostsController, type: :controller do
+  render_views
+  let(:user) { create(:user) }
+  let(:post) { create(:post, user: user) }
+  let(:comment) { create(:comment, post: post, user: user) }
+
+  describe '#show' do
+    it 'renders post with comments' do
+      post
+      comment
+      login_as user
+      get :show, params: { id: post.id }
+      # expect ...
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>How can we protect ?</h3>
+
+<pre><code class="language-ruby">FactoryGirl.define do
+  factory :company do
+    id 1
+    subscription
+
+    trait :with_unlocked_id do
+      id nil
+    end
+  end
+end
+</code></pre>
+
+<p>Now creating another company in spec will raise exception unless we explicitly use <em>with_unlocked_id</em></p>
+
+<pre><code class="language-ruby">create(:company)
+create(:company, :with_unlocked_id)
+</code></pre>
+
+</section>
+<section>
+
+<h3>Other solution</h3>
+
+<pre><code class="language-ruby">FactoryGirl.define do
+  factory :comment do
+    post
+    user { post.user }
+  end
+end
+</code></pre>
+
+<p>However this will only work if we have more associations, so in our case this can’t be used for post factory.</p>
+
+</section>
+<section>
+
+<h3>2. Using seeds to reduce factory objects creation</h3>
+
+<pre><code class="language-ruby"># spec/support/seed_users.rb
+class SeedUsers
+  class &lt;&lt; self
+    def load
+      FactoryGirl.create(:user, id: 1, :with_paid_account)
+      FactoryGirl.create(:user, id: 2, :with_free_account)
+    end
+
+    def find_with_paid_plan
+      User.find(1)
+    end
+
+    def find_with_free_plan
+      User.find(2)
+    end
+  end
+end
+</code></pre>
+
+<pre><code class="language-ruby">config.before(:suite) do
+  DatabaseCleaner.strategy = :truncation
+  DatabaseCleaner.clean
+  SeedUsers.load
+end
+
+</code></pre>
+
+</section>
+<section>
+
+<h3>Usage in specs</h3>
+
+<pre><code class="language-ruby">describe PostsController, type: :controller do
+  render_views
+  let(:user) { SeedUsers.find_with_free_plan }
+  let(:post) { create(:post, user: user) }
+  let(:comment) { create(:comment, post: post) }
+
+  describe '#show' do
+    it 'renders post with comments' do
+      post
+      comment
+      login_as user
+      get :show, params: { id: post.id }
+      # expect ...
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<p>Pros</p>
+
+<ul>
+  <li>Can boost speed dramatically especially when having &gt; 1k unit tests</li>
+  <li>Easily in implementation, and we’re still using factories</li>
+</ul>
+
+<p>Cons</p>
+
+<ul>
+  <li>Changing something in those seeds can brake a lot of specs</li>
+</ul>
+
+<p class="fragment">What about feature specs ? Will those work ?</p>
+
+</section>
+<section>
+
+<p>Feature specs truncate tables so they will delete our seed data :(</p>
+
+</section>
+<section>
+
+<h3>Adjust spec order</h3>
+
+<pre><code class="language-ruby"># spec/rails_helper.rb
+RSpec.configure do |config|
+  config.register_ordering(:global) do |items|
+    items.sort_by do |group|
+      group.metadata[:type] == :feature ? 1 : 0
+    end
+  end
+end
+</code></pre>
+
+<p>That way feature specs will run at the end and all other specs can make use of seed data</p>
+
+</section>
+<section>
+
+<h3>3. Optimize basic factories</h3>
+
+<pre><code class="language-ruby">FactoryGirl.define do
+  factory :post do
+    user
+    category
+
+    after(:create) do |post|
+      2.times { FactoryGirl.create(:comment, post: post) }
+    end
+  end
+end
+</code></pre>
+
+<p>vs</p>
+
+<pre><code class="language-ruby">FactoryGirl.define do
+  factory :post do
+    user
+
+    trait :with_category do
+      category
+    end
+
+    trait :with_comments do
+      after(:create) do |post|
+        2.times { FactoryGirl.create(:comment, post: post) }
+      end
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+
+<p>Questions ?</p>
+
+</section>
+
+  </div>
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+
+<script>
+  (function() {
+  function extend( a, b ) {
+    for(var i in b) {
+      a[i] = b[i];
+    }
+  }
+  var baseOptions = {
+    transition: 'default',
+
+    dependencies: [
+      { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+      { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+      { src: 'plugin/zoom-js/zoom.js', async: true },
+      { src: 'plugin/notes/notes.js', async: true }
+    ]
+  };
+
+
+  var configOptions = {"controls":true,"progress":true,"history":true,"center":true}
+  var initializeOptions = {};
+  extend(initializeOptions, baseOptions);
+  extend(initializeOptions, configOptions);
+  Reveal.initialize(initializeOptions);
+})();
+
+</script>
+
+  </body>
+</html>
