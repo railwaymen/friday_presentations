@@ -1,0 +1,176 @@
+<section>
+
+<h3>Ain’t No Rest For The Wicked</h3>
+<h5>protection of web applications</h5>
+
+<p>Karol Kamiński</p>
+
+</section>
+<section>
+
+<p><img src="./images/chart.png" alt="chart"></p>
+
+<p>97% of web applications are vulnerable to attacks</p>
+
+<p>Carnegie Mellon University’s CyLab research has shown  that 1k lines of code contain an average of 30 bugs.</p>
+
+</section>
+<section>
+
+<p><img src="./images/bear.png" alt="chart"></p>
+
+<p>hint: vulnerability != leak</p>
+
+</section>
+<section>
+
+<p><img src="./images/robot.png" alt="chart"></p>
+
+<p>Mr. Robot: The world is a dangerous place, not because of those who do evil but because of those who look on and do nothing.</p>
+
+</section>
+<section>
+
+<p>OWASP: open web application security project</p>
+
+<ul>
+  <li>Injection</li>
+  <li>Broken Authentication</li>
+  <li>Sensitive Data Exposure</li>
+  <li>XML External Entities (XXE)</li>
+  <li>Broken Access Control</li>
+  <li>Security Misconfiguration</li>
+  <li>Cross-Site Scripting (XSS)</li>
+  <li>Cross-Site Request Forgery (CSRF)</li>
+  <li>Using Components with Known Vulnerabilities</li>
+  <li>Insufficient Logging&amp;Monitoring</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="./images/reddit.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>Sensitive Data Exposure</p>
+
+<p><img src="./images/console.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>Cross-Site Request Forgery (CSRF)</p>
+
+<p><img src="./images/csrf.png" alt="chart"></p>
+
+<pre><code class="language-link">http://server/admin/users/1?operation=change_pass&amp;new_pass=test123
+</code></pre>
+
+</section>
+<section>
+
+<p>Cross-Site Request Forgery (CSRF) - remedy</p>
+
+<ul>
+  <li>random token generates on hidden field inside our form  before each call to the API (facebook)</li>
+  <li>force user to re-log in before crucial actions (allegro)</li>
+  <li>check http headers during each request (dangerous)</li>
+</ul>
+
+<p><img src="./images/safety.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>Cross-Site Scripting (XSS)</p>
+
+<p>Executing some code (especially JavaScript) without any knowledge of the victim</p>
+
+<p><img src="./images/xss.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>Cross-Site Scripting (XSS) - threats</p>
+
+<ul>
+  <li>steal cookies (especially session ones)</li>
+  <li>use the victim as a proxy</li>
+  <li>mislead the victim (phishing)</li>
+  <li>take control over all system (exploit on a browser)</li>
+</ul>
+
+</section>
+<section>
+
+<p>Cross-Site Scripting (XSS) - types</p>
+
+<ul>
+  <li>Stored XSS - payload stored in a database (e.g. by adding a post or comment)</li>
+  <li>Reflected XSS - dynamically executing code (e.g. search fields)</li>
+  <li>DOM Based XSS - result of modifications of some DOM element</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="./images/allegro.png" alt="chart"><br>
+<img src="./images/kurnik.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>Cross-Site Scripting (XSS) - you tricky bastard!</p>
+
+<pre><code class="language-code">&lt;script&gt;alert(‘BOOM')&lt;/script&gt;
+
+&lt;ʇdıɹɔs/&gt;(,ɯooq‘)ʇɹǝlɐ&lt;ʇdıɹɔs&gt;
+
+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]][([][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]])[+!+[]+[+[]]]+([] …
+
+%26%238238;%3Cscript%3Ealert(%27BOOM%27)%3C/script%3E
+</code></pre>
+
+</section>
+<section>
+
+<p><img src="./images/ruby.png" alt="chart"></p>
+
+<p>Using web framework makes me bulletproof!</p>
+
+</section>
+<section>
+
+<p>… except … it’s not ;(<br>
+Mass assignment exploit</p>
+<pre><code class="language-example">update_attributes(params[:foo]) allowed to make any update on any global variable
+</code></pre>
+
+<p><img src="./images/github.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p><img src="./images/exploit.png" alt="chart"></p>
+
+</section>
+<section>
+
+<p>TOOLS</p>
+
+<ul>
+  <li>Firefox extensions - XSS Me, HackBar</li>
+  <li>Burp Suite - complex tool for pen-testing</li>
+  <li>Kali Linux - Linux distribution designed for pen-testing</li>
+</ul>
+
+</section>
+<section>
+
+<p><img src="./images/witcher.png" alt="chart"></p>
+
+<p>F. Nietzsche: If you gaze long into an abyss,  the abyss also gazes into you.</p>
+
+</section>
