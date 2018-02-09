@@ -1,0 +1,330 @@
+<section>
+
+<h3>How to Create a Ruby Gem</h3>
+
+<p>Krzysztof Buszewicz</p>
+
+</section>
+<section>
+
+<h2>Agenda</h2>
+
+<ol>
+  <li>Starting Up</li>
+  <li>Folder Structure</li>
+  <li>Gem Specification</li>
+  <li>Configuration</li>
+  <li>Generators (Rails)</li>
+  <li>Modules &amp; Errors</li>
+  <li>Publishing</li>
+</ol>
+
+</section>
+<section>
+
+<h2>1. Starting Up</h2>
+
+<pre><code class="language-bash">gem install bundler
+bundle gem railwaymen
+</code></pre>
+<p>(using bundler 1.16.1)</p>
+
+<p>3 questions:</p>
+<ul>
+  <li>specs (chosen rspec),</li>
+  <li>license (chosen yes),</li>
+  <li>coc (chosen no).</li>
+</ul>
+
+<pre><code class="language-bash">cd railwaymen
+git commit -m "Initial commit"
+git remote add origin https://github.com/krzysztofbuszewicz-railwaymen/railwaymen.git
+git push -u origin master
+</code></pre>
+
+</section>
+<section>
+
+<h2>2. Folder Structure</h2>
+
+<pre><code class="language-bash">.
+├── .git                     # git repository
+├── bin
+│   ├── console              # console loader with dependencies
+│   └── setup                # automated setup script
+├── Gemfile                  # dependencies management
+├── .gitignore               # initially configured .gitignore
+├── lib
+│   ├── railwaymen           # main folder for gem's classes etc.
+│   │   └── version.rb       # gem versioning file
+│   └── railwaymen.rb        # maing gem's file required when gem loaded
+├── LICENSE.txt              # license file
+├── railwaymen.gemspec       # gem and dependencies specification
+├── Rakefile                 # file for rake tasks including gem tasks
+├── README.md                # readme for describing gem
+├── .rspec                   # rspec configuration
+├── spec
+│   ├── railwaymen_spec.rb   # maing module spec
+│   └── spec_helper.rb       # rspec config
+└── .travis.yml              # travis CI config
+</code></pre>
+
+</section>
+<section>
+
+<h2>3. Gem Specification</h2>
+
+<pre><code class="language-ruby"># railwaymen.gemspec
+lib = File.expand_path("../lib", __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require "railwaymen/version"
+
+Gem::Specification.new do |spec|
+  spec.name = "railwaymen"
+  spec.version = Railwaymen::VERSION
+  spec.authors = ["Krzysztof Buszewicz"]
+  spec.email = ["krzysztof.buszewicz@railwaymen.org"]
+
+  spec.summary = "Example gem"
+  spec.description = "This gem was created for presentation purposes."
+  spec.homepage = "https://github.com/krzysztofbuszewicz-railwaymen/railwaymen"
+  spec.license = "MIT"
+
+  spec.files = `git ls-files -z`.split("\x0").reject do |f|
+    f.match(%r{^(test|spec|features)/})
+  end
+
+  spec.bindir = "exe"
+  spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.require_paths = ["lib"]
+
+  spec.add_development_dependency "bundler", "~&gt; 1.16"
+  spec.add_development_dependency "rake", "~&gt; 10.0"
+  spec.add_development_dependency "rspec", "~&gt; 3.0"
+end
+</code></pre>
+
+<p><a href="http://guides.rubygems.org/specification-reference/">http://guides.rubygems.org/specification-reference/</a></p>
+
+</section>
+<section>
+
+<h2>3. Gem Specification</h2>
+
+<pre><code class="language-bash">bundle
+git add -A
+git commit -m "filled .gemspec"
+git push
+</code></pre>
+
+</section>
+<section>
+
+<h2>4. Configuration</h2>
+
+<pre><code class="language-ruby"># lib/railwaymen/configuration.rb
+module Railwaymen
+  class Configuration
+    attr_reader :names
+
+    def initialize
+      @names = %w(Krzysztof)
+    end
+
+    def names=(names)
+      raise(StandardError, 'names must be an array of strings') if !valid_names?(names)
+      @names = names
+    end
+
+    private
+
+    def valid_names?(names)
+      names.is_a?(Array) &amp;&amp; names.all? { |n| n.is_a?(String) }
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>4. Configuration</h2>
+
+<pre><code class="language-ruby"># lib/railwaymen.rb
+require "railwaymen/version"
+require "railwaymen/configuration"
+
+module Railwaymen
+  class &lt;&lt; self
+    def configuration
+      @configuration ||= Configuration.new
+    end
+
+    def configure
+      yield(configuration) if block_given?
+      configuration
+    end
+  end
+end
+</code></pre>
+
+<pre><code class="language-bash">git add -A
+git commit -m "added configuration"
+git push
+</code></pre>
+
+</section>
+<section>
+
+<h2>5. Generators (Rails)</h2>
+
+<p>Goal: generate initializer in Rails projects using our gem by:</p>
+
+<pre><code class="language-bash">bundle exec rails g railwaymen:install
+</code></pre>
+
+</section>
+<section>
+
+<h2>5. Generators (Rails)</h2>
+
+<pre><code class="language-ruby"># lib/generators/railwaymen/templates/initializer.rb
+Railwaymen.configure do |c|
+  c.names = %w(Krzysiek Zdzisiek Misiek)
+end
+</code></pre>
+
+<pre><code class="language-ruby"># lib/generators/railwaymen/install_generator.rb
+require 'rails/generators'
+
+module Railwaymen
+  class InstallGenerator &lt; ::Rails::Generators::Base
+    namespace 'railwaymen:install'
+    source_root File.expand_path('../templates', __FILE__)
+    desc 'Generates railwaymen gem initializer.'
+
+    def install
+      template 'initializer.rb', 'config/initializers/railwaymen.rb'
+    end
+  end
+end
+</code></pre>
+
+<pre><code class="language-bash">git add -A
+git commit -m "add install generator for Rails"
+git push
+</code></pre>
+
+</section>
+<section>
+
+<h2>6. Modules &amp; Errors</h2>
+
+<p>a) Add classes and modules under lib/railwaymen directory</p>
+
+<pre><code class="language-ruby"># lib/railwaymen/conductor.rb
+module Railwaymen
+  module Conductor
+    def check_ticket!(ticket)
+      raise Errors::MissingTicket if ticket.nil?
+      "OK"
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>6. Modules &amp; Errors</h2>
+
+<p>b) Create gem’s own error classes under lib/railwaymen/errors and Errors namespace</p>
+
+<pre><code class="language-ruby"># lib/railwaymen/errors/missing_ticket.rb
+module Railwaymen
+  module Errors
+    class MissingTicket &lt; StandardError
+      def initialize
+        super('Ticket is nil and it cannot be!')
+      end
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>6. Modules &amp; Errors</h2>
+
+<p>c) Include them in lib/railwaymen.rb</p>
+
+<pre><code class="language-ruby"># lib/railwaymen.rb
+require "railwaymen/version"
+require "railwaymen/configuration"
+require "railwaymen/errors/missing_ticket"
+require "railwaymen/conductor"
+
+module Railwaymen
+  class &lt;&lt; self
+    def configuration
+      @configuration ||= Configuration.new
+    end
+
+    def configure
+      yield(configuration) if block_given?
+      configuration
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h2>6. Modules &amp; Errors</h2>
+
+<p>d) Fix &amp; write specs</p>
+
+<pre><code class="language-ruby">RSpec.describe Railwaymen do
+  it "has a version number" do
+    expect(Railwaymen::VERSION).not_to be nil
+  end
+
+  # LOL, remove this
+  it "does something useful" do
+    expect(false).to eq(true)
+  end
+end
+</code></pre>
+
+<pre><code class="language-bash">git add -A
+git commit -m "sample module, error, and fixed specs"
+git push
+</code></pre>
+
+</section>
+<section>
+
+<h2>7. Publishing</h2>
+
+<pre><code class="language-bash">bundle exec rake release
+
+# railwaymen 0.1.0 built to pkg/railwaymen-0.1.0.gem.
+# Tagged v0.1.0.
+# Pushed git commits and tags.
+# rake aborted!
+# Your rubygems.org credentials aren't set. Run `gem push` to set them.
+</code></pre>
+
+<pre><code class="language-bash">gem push pkg/railwaymen-0.1.0.gem
+</code></pre>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+
+<p>Questions ?</p>
+
+</section>
