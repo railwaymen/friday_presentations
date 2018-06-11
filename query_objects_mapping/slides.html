@@ -1,0 +1,641 @@
+<section>
+
+<h3>Query Objects Mapping</h3>
+<p>Michał Szmyd</p>
+
+</section>
+<section>
+
+<h2>Scenario</h2>
+
+<p>I’ve created social app that users can add their own posts</p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">class Post &lt; ApplicationRecord
+  belongs_to :user
+  has_many :comments,  -&gt; { order(created_at: :desc) }, inverse_of: :post
+  has_many :likes,     -&gt; { order(created_at: :desc) }, inverse_of: :post
+  has_many :reactions, -&gt; { order(created_at: :desc) }, inverse_of: :post
+
+  validates :title, :description, :user_id, presence: true
+end
+</code></pre>
+
+<pre><code class="language-ruby">class Like &lt; ApplicationRecord
+  belongs_to :user
+  belongs_to :post
+
+  validates :user_id, uniqueness: { scope: :post_id }
+  validates :user_id, :post_id, presence: true
+end
+</code></pre>
+
+<pre><code class="language-ruby">class Reaction &lt; ApplicationRecord
+  belongs_to :user
+  belongs_to :post
+
+  enum name: {
+    smile: 'smile',
+    angry: 'angry',
+    sad:   'sad'
+  }
+
+  validates :user_id, uniqueness: { scope: :post_id }
+end
+</code></pre>
+
+<pre><code class="language-ruby">class Comment &lt; ApplicationRecord
+  belongs_to :user
+  belongs_to :post
+
+  validates :user_id, :post_id, :body, presence: true
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>How can we show user the last activities on every post?</h3>
+
+</section>
+<section>
+
+<h3>We need to create a Query Object!</h3>
+
+</section>
+<section>
+
+<p>Our `results` method returns an array of assoc arrays with SQL results</p>
+
+<pre><code class="language-ruby"># file: app/queries/activities.rb
+
+class Activities
+  def initialize(post_id:)
+    @post_id = post_id
+  end
+
+  def results
+    @results ||= ActiveRecord::Base.connection.execute(sanitized_sql)
+  end
+
+  private
+
+  def sql
+    %(
+        SELECT id, user_id, 'comment' AS type, body AS description, created_at
+        FROM comments WHERE comments.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'like' AS type, '' AS description, created_at
+        FROM likes WHERE likes.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'reaction' AS type, name AS description, created_at
+        FROM reactions WHERE reactions.post_id = :post_id
+    )
+  end
+
+  def sanitized_sql
+    ApplicationRecord.send(:sanitize_sql_array, [sql, post_id: @post_id])
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>But we shouldn’t use this kind of data</h3>
+<ul>
+  <li>In Post model after call `activities` method, we’re waiting for array of objects</li>
+  <li>You can pass anything to array index and it will not raise an error</li>
+  <li>Timestamps are in wrong format</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Time for some Object Mapping!</h3>
+
+<p>We need to create a Struct that can store our data</p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">class Activities
+  Activity = Struct.new(:id, :user_id, :type, :description, :created_at) # Struct define
+
+  def initialize(post_id:)
+    @post_id = post_id
+  end
+
+  def results
+    @results ||= ActiveRecord::Base.connection
+                                   .execute(sanitized_sql)
+                                   .map(&amp;method(:build_activity)) # Mapping
+  end
+
+  private
+
+  def build_activity(row)
+    Activity.new(*row.values) # New method
+  end
+
+  def sql
+    %(
+        SELECT id, user_id, 'comment' AS type, body AS description, created_at
+        FROM comments WHERE comments.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'like' AS type, '' AS description, created_at
+        FROM likes WHERE likes.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'reaction' AS type, name AS description, created_at
+        FROM reactions WHERE reactions.post_id = :post_id
+    )
+  end
+
+  def sanitized_sql
+    ApplicationRecord.send(:sanitize_sql_array, [sql, post_id: @post_id])
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h4>But our `created_at` is in wrong format</h4>
+
+<p><img src="images/struct.png" alt="Struct"></p>
+
+<p>In this case we need to use tap method for mapped object and reassign parsed date to created_at</p>
+
+<pre><code class="language-ruby">def build_activity(row)
+  Activity.new(*row.values).tap do |r|
+    r.created_at = Time.zone.parse(row['created_at'])
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h4>But we still don’t have User inside our new object</h4>
+
+</section>
+<section>
+
+<h2>Model? Why not!</h2>
+
+<p>Let’s move our struct logic to model and create a method to call user object</p>
+
+<pre><code class="language-ruby"># file: app/models/activity.rb
+
+class Activity
+  attr_reader :id, :user_id, :type, :description, :created_at
+
+  def initialize(id:, user_id:, type:, description:, created_at:)
+    @id          = id
+    @user_id     = user_id
+    @type        = type
+    @description = description
+    @created_at  = created_at
+  end
+
+  def user
+    @user ||= User.find(user_id)
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Validations</h3>
+
+<pre><code class="language-ruby">class Activity
+  class RecordInvalid &lt; StandardError; end       # New error class define
+  attr_reader :id, :user_id, :type, :description, :created_at
+
+  include ActiveModel::Validations               # Validations include
+  validates :id, :user_id, :type, presence: true # Validates
+
+  def initialize(id:, user_id:, type:, description:, created_at:)
+    @id          = id
+    @user_id     = user_id
+    @type        = type
+    @description = description
+    @created_at  = created_at
+    raise(RecordInvalid, errors.messages) unless valid? # Raise in case of invalid class
+  end
+
+  def user
+    @user ||= User.find(user_id)
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h4>Query Object</h4>
+
+<pre><code class="language-ruby">class Activities
+  def initialize(post_id:)
+    @post_id = post_id
+  end
+
+  def results
+    @results ||= ActiveRecord::Base.connection
+                                   .execute(sanitized_sql)
+                                   .map(&amp;method(:build_activity))
+  end
+
+  private
+
+  def build_activity(row) # Method update
+    Activity.new(
+      id:          row['id'],
+      user_id:     row['user_id'],
+      type:        row['type'],
+      description: row['description'],
+      created_at:  Time.zone.parse(row['created_at'])
+    )
+  end
+
+  def sql
+    %(
+        SELECT id, user_id, 'comment' AS type, body AS description, created_at
+        FROM comments WHERE comments.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'like' AS type, '' AS description, created_at
+        FROM likes WHERE likes.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'reaction' AS type, name AS description, created_at
+        FROM reactions WHERE reactions.post_id = :post_id
+    )
+  end
+
+  def sanitized_sql
+    ApplicationRecord.send(:sanitize_sql_array, [sql, post_id: @post_id])
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<p>Now we can easily call Activity.user</p>
+
+<p>But still something is wrong</p>
+
+<p><img src="images/n+1.png" alt="Struct"></p>
+
+</section>
+<section>
+
+<h2>Includes!</h2>
+<h4>inside of Query Object</h4>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">class Activities
+  def initialize(post_id:)
+    @post_id = post_id
+  end
+
+  def results # includes
+    @results ||= ActiveRecord::Base.connection
+                                   .execute(sanitized_sql)
+                                   .map(&amp;method(:build_activity))
+    assign_includes if @includes_for&amp;.any?
+    @results
+  end
+
+  def includes(*args) # Public includes assign
+    @includes_for = args
+  end
+
+  private
+
+  def assign_includes # New method
+    @includes_for.each do |include_name|
+      hash     = {}
+      includes = include_name.to_s
+                             .humanize
+                             .constantize
+                             .where(id: @results.map(&amp;:"#{include_name}_id").uniq)
+
+      includes.each { |e| hash[e.id] = e }
+
+      @results.each do |result|
+        result.send(:"#{include_name}=", hash[result.send(:"#{include_name}_id")])
+      end
+    end
+  end
+
+  def build_activity(row)
+    Activity.new(
+      id:          row['id'],
+      user_id:     row['user_id'],
+      type:        row['type'],
+      description: row['description'],
+      created_at:  Time.zone.parse(row['created_at'])
+    )
+  end
+
+  def sql
+    %(
+        SELECT id, user_id, 'comment' AS type, body AS description, created_at
+        FROM comments WHERE comments.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'like' AS type, '' AS description, created_at
+        FROM likes WHERE likes.post_id = :post_id
+      UNION
+        SELECT id, user_id, 'reaction' AS type, name AS description, created_at
+        FROM reactions WHERE reactions.post_id = :post_id
+    )
+  end
+
+  def sanitized_sql
+    ApplicationRecord.send(:sanitize_sql_array, [sql, post_id: @post_id])
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<p>Let’s add to our Activity model attr_writer for user</p>
+
+<pre><code class="language-ruby">class Activity
+  class RecordInvalid &lt; StandardError; end
+  attr_reader :id, :user_id, :type, :description, :created_at
+  attr_writer :user # Added writer
+
+  include ActiveModel::Validations
+  validates :id, :user_id, :type, presence: true
+
+  def initialize(id:, user_id:, type:, description:, created_at:)
+    @id          = id
+    @user_id     = user_id
+    @type        = type
+    @description = description
+    @created_at  = created_at
+    raise(RecordInvalid, errors.messages) unless valid?
+  end
+
+  def user
+    @user ||= User.find(user_id)
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Woops!</h3>
+
+<p><img src="images/woops.png" alt="Struct"></p>
+
+<p>So how should we execute this?</p>
+
+</section>
+<section>
+
+<h3>Methods Chaining</h3>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">class Activities
+  def initialize(post_id:)
+    @post_id = post_id
+  end
+
+  def results
+    @results ||= ActiveRecord::Base.connection
+                                   .execute(sanitized_sql)
+                                   .map(&amp;method(:activity_build))
+    assign_includes if @includes_for&amp;.any?
+    @results
+  end
+
+  def includes(*args)
+    @includes_for = args
+    self # Self return to gain ability of method chaining
+  end
+
+  private
+
+  def assign_includes # rails inspiration
+    @includes_for.each do |include_name|
+      hash     = {}
+      includes = include_name.to_s
+                             .humanize
+                             .constantize
+                             .where(id: @results.map(&amp;:"#{include_name}_id").uniq)
+
+      includes.each { |e| hash[e.id] = e }
+
+      @results.each do |result|
+        result.send(:"#{include_name}=", hash[result.send(:"#{include_name}_id")])
+      end
+    end
+  end
+</code></pre>
+
+</section>
+<section>
+
+<h3>N+1 Defeated</h3>
+
+<p><img src="images/n+1-defeated.png" alt="Struct"></p>
+
+</section>
+<section>
+
+<p>Now I also need pagination on my show page<br>
+Let’s use chains again</p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">class Activities
+  def initialize(post_id:)
+    @post_id        = post_id
+    @sql_decoration = '' # Example of sql decorator
+  end
+
+  def results
+    @results ||= ActiveRecord::Base.connection
+                                   .execute(sanitized_sql)
+                                   .map(&amp;method(:activity_build))
+    assign_includes if @includes_for&amp;.any?
+    @results
+  end
+
+  def includes(*args)
+    @includes_for = args
+    self
+  end
+
+  def limit(number) # New method
+    @sql_decoration += " LIMIT #{number}"
+    self
+  end
+
+  def offset(number) # New method
+    @sql_decoration += " OFFSET #{number}"
+    self
+  end
+
+  def order(order_args)
+    if order_args.is_a?(Symbol)
+      @sql_decoration += sanitize(" ORDER BY #{order_args} ASC")
+    elsif order_args.is_a?(Hash)
+      @sql_decoration += " ORDER BY #{order_args.keys.first} #{order_args.values.first.upcase}"
+    end
+    self
+  end
+  ...
+</code></pre>
+
+</section>
+<section>
+
+<h4>It’s not looking quite good</h4>
+
+<pre><code class="language-ruby">def limit(number)
+  @sql_decoration += " LIMIT #{number}"
+  self
+end
+
+def offset(number)
+  @sql_decoration += " OFFSET #{number}"
+  self
+end
+</code></pre>
+
+</section>
+<section>
+
+<p>Sanitize private method</p>
+
+<pre><code class="language-ruby">def limit(number)
+  @sql_decoration += sanitize(' LIMIT ?', number)
+  self
+end
+
+def offset(number)
+  @sql_decoration += sanitize(' OFFSET ?', number)
+  self
+end
+
+private
+
+def sanitize(string, *args)
+  ApplicationRecord.send(:sanitize_sql_array, [string, *args])
+end
+</code></pre>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">def sql
+  %(
+      SELECT id, user_id, 'comment' AS type, body AS description, created_at
+      FROM comments WHERE comments.post_id = :post_id
+    UNION
+      SELECT id, user_id, 'like' AS type, '' AS description, created_at
+      FROM likes WHERE likes.post_id = :post_id
+    UNION
+      SELECT id, user_id, 'reaction' AS type, name AS description, created_at
+      FROM reactions WHERE reactions.post_id = :post_id
+    #{@sql_decoration}
+  )
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Results</h3>
+
+<p><img src="images/chains-results.png" alt="Struct"></p>
+
+</section>
+<section>
+
+<h3>Post model</h3>
+
+<pre><code class="language-ruby">class Post &lt; ApplicationRecord
+  belongs_to :user
+  has_many :comments,  -&gt; { order(created_at: :desc) }, inverse_of: :post
+  has_many :likes,     -&gt; { order(created_at: :desc) }, inverse_of: :post
+  has_many :reactions, -&gt; { order(created_at: :desc) }, inverse_of: :post
+
+  validates :title, :description, :user_id, presence: true
+
+  def activities(limit: 5, offset: 0)
+    Activities.new(post_id: id)
+              .includes(:user)
+              .order(created_at: :desc)
+              .limit(limit)
+              .offset(offset)
+              .results
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h4>Specs FactoryBot</h4>
+
+<pre><code class="language-ruby">FactoryBot.define do
+  factory :activity, class: Activity do
+    skip_create
+
+    sequence(:id)
+    user
+    created_at { Time.current }
+
+    trait :comment do
+      type 'comment'
+      description 'Test Message'
+    end
+
+    trait :like do
+      type 'like'
+      description ''
+    end
+
+    trait :reaction do
+      type 'reaction'
+      description 'smile'
+    end
+
+    initialize_with do
+      new(
+        id:          id,
+        user_id:     user.id,
+        created_at:  created_at,
+        type:        type,
+        description: description
+      )
+    end
+  end
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Questions?</h3>
+
+</section>
+<section>
+
+<h3>Thank you :)</h3>
+
+</section>
