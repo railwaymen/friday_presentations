@@ -11,3 +11,4 @@ Archive with presentations given by our developers on fridays
 * 15.12.2017 [Ain't No Rest For The Wicked](https://slides.railwaymen.org/aint_no_rest_for_the_wicked/) by [Karol Kamiński](https://github.com/panKarol88)
 * 09.02.2018 [How to create a ruby gem](https://slides.railwaymen.org/how_to_create_a_ruby_gem/) by [Krzysztof Buszewicz](https://github.com/buszu)
 * 08.06.2018 [Query Objects Mapping](https://slides.railwaymen.org/query_objects_mapping/) by [Michał Szmyd](https://github.com/michalszmyd)
+* 31.08.2018 [Native Code In Web Development Stack - part 1](https://slides.railwaymen.org/native_code_in_web_dev_stack_1/pres.pdf) by [Jaroslaw Konik](https://github.com/jarkonik)
