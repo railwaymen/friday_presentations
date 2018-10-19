@@ -101,6 +101,7 @@ li {
 .reveal ul {
   display: inline-block;
   text-align: left;
+  font-size: 25px;
   margin: 0 0 0 1em; }
 
 .reveal ol {
