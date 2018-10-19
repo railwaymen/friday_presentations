@@ -12,3 +12,4 @@ Archive with presentations given by our developers on fridays
 * 09.02.2018 [How to create a ruby gem](https://slides.railwaymen.org/how_to_create_a_ruby_gem/) by [Krzysztof Buszewicz](https://github.com/buszu)
 * 08.06.2018 [Query Objects Mapping](https://slides.railwaymen.org/query_objects_mapping/) by [Michał Szmyd](https://github.com/michalszmyd)
 * 31.08.2018 [Native Code In Web Development Stack - part 1](https://slides.railwaymen.org/native_code_in_web_dev_stack_1/pres.pdf) by [Jaroslaw Konik](https://github.com/jarkonik)
+* 19.10.2018 [Lateral Windows](https://slides.railwaymen.org/lateral_windows/) by [Michał Szmyd](https://github.com/michalszmyd)
