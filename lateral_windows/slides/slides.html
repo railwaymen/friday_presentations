@@ -1,0 +1,587 @@
+<section>
+
+<h3>Lateral Windows</h3>
+
+<p>Michał Szmyd</p>
+
+</section>
+<section>
+
+<h2>Scenario</h2>
+
+<h4>I have created a simple blog</h4>
+<p>Users can create posts with different categories<br>
+Users can leave comments</p>
+
+</section>
+<section>
+
+<h3>Case</h3>
+<h4>I would like to display top users activity in different categories</h4>
+<p>To make it more simplify i only take care of number of comments belonged to user per tag</p>
+
+</section>
+<section>
+
+<h3>Just group it!</h3>
+
+<pre><code class="language-sql">SELECT
+  users.email,
+  posts.tag,
+  COUNT(comments.*) AS user_comments_tag
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+GROUP BY users.id, posts.tag
+ORDER BY user_comments_tag DESC
+</code></pre>
+
+<pre><code>email                     |     tag     | user_comments_tag
+--------------------------+-------------+-------------------
+olivia.johnson1@email.com | video       |                 3
+liam.jones3@email.com     | programming |                 3
+noah.davis4@email.com     | video       |                 2
+ava.williams2@email.com   | moto        |                 1
+liam.jones3@email.com     | video       |                 1
+liam.jones3@email.com     | moto        |                 1
+noah.davis4@email.com     | moto        |                 1
+emma.smith0@email.com     | moto        |                 1
+olivia.johnson1@email.com | moto        |                 1
+ava.williams2@email.com   | video       |                 1
+ava.williams2@email.com   | books       |                 1
+noah.davis4@email.com     | books       |                 1
+</code></pre>
+
+</section>
+<section>
+
+<h4>But i will have problems with counting total comments for post tags</h4>
+
+</section>
+<section>
+
+<h4>GROUP BY GROUPING SETS do the job!</h4>
+
+<pre><code class="language-sql">SELECT
+  users.email,
+  posts.tag,
+  COUNT(comments.*) AS user_comments_tag
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+GROUP BY GROUPING SETS(users.email, posts.tag), posts.tag
+ORDER BY users.email, user_comments_tag DESC, posts.tag NULLS LAST
+</code></pre>
+
+<pre><code>email                     |     tag     | user_comments_tag
+--------------------------+-------------+-------------------
+ava.williams2@email.com   | books       |                 1
+ava.williams2@email.com   | moto        |                 1
+ava.williams2@email.com   | video       |                 1
+emma.smith0@email.com     | moto        |                 1
+liam.jones3@email.com     | programming |                 3
+liam.jones3@email.com     | moto        |                 1
+liam.jones3@email.com     | video       |                 1
+noah.davis4@email.com     | video       |                 2
+noah.davis4@email.com     | books       |                 1
+noah.davis4@email.com     | moto        |                 1
+olivia.johnson1@email.com | video       |                 3
+olivia.johnson1@email.com | moto        |                 1
+                          | video       |                 7
+                          | moto        |                 5
+                          | programming |                 3
+                          | books       |                 2
+</code></pre>
+
+<p>but… not as i wanted</p>
+
+</section>
+<section>
+
+<h4>How about subquery</h4>
+<p>It will return correct rows and data but it is incredibly slow</p>
+<pre><code class="language-sql">SELECT
+  users.email,
+  posts.tag,
+  COUNT(comments.*) AS user_comments_tag,
+  (SELECT COUNT(comments.*)
+   FROM comments
+   INNER JOIN posts p ON comments.post_id = p.id
+                      AND users.id = users.id
+                      AND p.tag = posts.tag) AS total_comments
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+GROUP BY users.id, posts.tag
+ORDER BY users.id, user_comments_tag DESC
+</code></pre>
+
+<pre><code>email                     |     tag     | user_comments_tag | total_comments
+--------------------------+-------------+-------------------+----------------
+emma.smith0@email.com     | moto        |                 1 |              5
+olivia.johnson1@email.com | video       |                 3 |              7
+olivia.johnson1@email.com | moto        |                 1 |              5
+ava.williams2@email.com   | video       |                 1 |              7
+ava.williams2@email.com   | books       |                 1 |              2
+ava.williams2@email.com   | moto        |                 1 |              5
+liam.jones3@email.com     | programming |                 3 |              3
+liam.jones3@email.com     | video       |                 1 |              7
+liam.jones3@email.com     | moto        |                 1 |              5
+noah.davis4@email.com     | video       |                 2 |              7
+noah.davis4@email.com     | books       |                 1 |              2
+noah.davis4@email.com     | moto        |                 1 |              5
+
+</code></pre>
+
+</section>
+<section>
+
+<h4>However, there’s much better option!</h4>
+
+<pre><code class="language-sql">SELECT DISTINCT ON (posts.tag, users.id)
+  users.email,
+  posts.tag,
+  COUNT(comments.*) OVER(PARTITION BY comments.user_id, posts.tag) AS user_comments_tag,
+  COUNT(comments.*) OVER(PARTITION BY posts.tag) AS total_tag_comments
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+ORDER BY users.id
+</code></pre>
+
+<pre><code>email                     |     tag     | user_comments_tag | total_tag_comments
+--------------------------+-------------+-------------------+--------------------
+emma.smith0@email.com     | moto        |                 1 |                  5
+olivia.johnson1@email.com | moto        |                 1 |                  5
+olivia.johnson1@email.com | video       |                 3 |                  7
+ava.williams2@email.com   | books       |                 1 |                  2
+ava.williams2@email.com   | moto        |                 1 |                  5
+ava.williams2@email.com   | video       |                 1 |                  7
+liam.jones3@email.com     | moto        |                 1 |                  5
+liam.jones3@email.com     | programming |                 3 |                  3
+liam.jones3@email.com     | video       |                 1 |                  7
+noah.davis4@email.com     | books       |                 1 |                  2
+noah.davis4@email.com     | moto        |                 1 |                  5
+noah.davis4@email.com     | video       |                 2 |                  7
+
+</code></pre>
+
+</section>
+<section>
+
+<h3>How it works under the hood?</h3>
+<p>SQL Clauses hierarchy</p>
+
+<ul>
+  <li>FROM</li>
+  <li>WHERE</li>
+  <li>GROUP BY</li>
+  <li>HAVING</li>
+  <li><strong>WINDOW</strong></li>
+  <li>SELECT</li>
+  <li>DISTINCT</li>
+  <li>ORDER BY</li>
+  <li>OFFSET</li>
+  <li>LIMIT</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Partitioning</h3>
+
+<pre><code>---------------------
+| Record id.1 tag.1 |
+| Record id.2 tag.1 |
+| Record id.3 tag.2 |
+| Record id.4 tag.2 |
+| Record id.5 tag.3 |
+---------------------
+</code></pre>
+
+<h4>Partition by tag id</h4>
+
+<pre><code>---------------------
+| Record id.1 tag.1 |
+| Record id.2 tag.1 | records count -&gt; 2
+|-------------------|
+| Record id.3 tag.2 |
+| Record id.4 tag.2 | records count -&gt; 2
+|-------------------|
+| Record id.5 tag.3 | records count -&gt; 1
+---------------------
+</code></pre>
+
+</section>
+<section>
+
+<h4>You can order your partition</h4>
+<p>Order by record id DESC</p>
+
+<pre><code>---------------------
+| Record id.2 tag.1 |
+| Record id.1 tag.1 |
+|-------------------|
+| Record id.4 tag.2 |
+| Record id.3 tag.2 |
+|-------------------|
+| Record id.5 tag.3 |
+---------------------
+</code></pre>
+
+</section>
+<section>
+
+<h4>Use OVER without PARTITION</h4>
+
+<pre><code>---------------------
+| Record id.1 tag.1 |
+| Record id.2 tag.1 |
+| Record id.3 tag.2 |
+| Record id.4 tag.2 |
+| Record id.5 tag.3 |
+---------------------
+</code></pre>
+
+</section>
+<section>
+
+<h3>After partitioning i can order columns</h3>
+
+<pre><code class="language-sql">SELECT DISTINCT ON (posts.tag, users.id, total_tag_comments, user_comments_tag, users.email)
+  users.email,
+  posts.tag,
+  COUNT(comments.*) OVER(PARTITION BY comments.user_id, posts.tag) AS user_comments_tag,
+  COUNT(comments.*) OVER(PARTITION BY posts.tag) AS total_tag_comments
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+ORDER BY total_tag_comments DESC, user_comments_tag DESC, posts.tag ASC, users.email ASC
+</code></pre>
+
+<pre><code>email                     |     tag     | user_comments_tag | total_tag_comments
+--------------------------+-------------+-------------------+--------------------
+olivia.johnson1@email.com | video       |                 3 |                  7
+noah.davis4@email.com     | video       |                 2 |                  7
+ava.williams2@email.com   | video       |                 1 |                  7
+liam.jones3@email.com     | video       |                 1 |                  7
+ava.williams2@email.com   | moto        |                 1 |                  5
+emma.smith0@email.com     | moto        |                 1 |                  5
+liam.jones3@email.com     | moto        |                 1 |                  5
+noah.davis4@email.com     | moto        |                 1 |                  5
+olivia.johnson1@email.com | moto        |                 1 |                  5
+liam.jones3@email.com     | programming |                 3 |                  3
+ava.williams2@email.com   | books       |                 1 |                  2
+noah.davis4@email.com     | books       |                 1 |                  2
+</code></pre>
+
+</section>
+<section>
+
+<h3>Define your windows</h3>
+
+<pre><code class="language-sql">SELECT DISTINCT ON (posts.tag, users.id, total_tag_comments, user_comments_tag)
+  users.email,
+  posts.tag,
+  COUNT(comments.*) OVER(by_user_and_post_tag) AS user_comments_tag,
+  COUNT(comments.*) OVER(by_post_tag) AS total_tag_comments
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+WINDOW
+  by_post_tag AS (PARTITION BY posts.tag),
+  by_user_and_post_tag AS (PARTITION BY comments.user_id, posts.tag)
+ORDER BY total_tag_comments DESC, user_comments_tag DESC, posts.tag ASC, users.id ASC
+</code></pre>
+
+</section>
+<section>
+
+<h3>Benchmarks</h3>
+<p>Remember that following results come from postgresql db hosted on home-class computer</p>
+
+<p>137 690 comments in database</p>
+
+<ul>
+  <li>Group by option</li>
+  <li>~363,631 ms</li>
+  <li>Window Function</li>
+  <li>~552,957 ms</li>
+  <li>Sub select</li>
+  <li>~1394,544 ms</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Let’s go one step further</h3>
+<p>and display same results in user profile dependent on user_id</p>
+
+<pre><code class="language-sql">SELECT DISTINCT ON (posts.tag, users.id, total_tag_comments, user_comments_tag)
+  users.email,
+  posts.tag,
+  COUNT(comments.*) OVER(PARTITION BY comments.user_id, posts.tag) AS user_comments_tag,
+  COUNT(comments.*) OVER(PARTITION BY posts.tag) AS total_tag_comments
+FROM users
+INNER JOIN comments ON comments.user_id = users.id
+LEFT JOIN posts ON posts.id = comments.post_id
+WHERE users.id = 2
+ORDER BY total_tag_comments DESC, user_comments_tag DESC, posts.tag ASC, users.id ASC
+</code></pre>
+<pre><code>email                     |  tag  | user_comments_tag | total_tag_comments
+--------------------------+-------+-------------------+--------------------
+olivia.johnson1@email.com | video |                 3 |                  3
+olivia.johnson1@email.com | moto  |                 1 |                  1
+
+</code></pre>
+
+<p>But it’s not what I expected</p>
+
+</section>
+<section>
+
+<h4>In this case we need to collect data before WHERE clause</h4>
+<h4>Possible options</h4>
+<ul>
+  <li>SQL View</li>
+  <li>Sub query select</li>
+</ul>
+
+</section>
+<section>
+
+<pre><code class="language-sql">SELECT * FROM
+  (
+    SELECT DISTINCT ON (posts.tag, users.id, total_tag_comments, user_comments_tag)
+      users.id AS user_id,
+      users.email,
+      posts.tag,
+      COUNT(comments.*) OVER(PARTITION BY comments.user_id, posts.tag) AS user_comments_tag,
+      COUNT(comments.*) OVER(PARTITION BY posts.tag) AS total_tag_comments
+    FROM users
+    INNER JOIN comments ON comments.user_id = users.id
+    LEFT JOIN posts ON posts.id = comments.post_id
+    ORDER BY total_tag_comments DESC, user_comments_tag DESC, posts.tag ASC, users.id ASC
+  ) t0
+WHERE t0.user_id = 2
+</code></pre>
+<pre><code>user_id |           email           |  tag  | user_comments_tag | total_tag_comments
+--------+---------------------------+-------+-------------------+--------------------
+      2 | olivia.johnson1@email.com | video |                 3 |                  7
+      2 | olivia.johnson1@email.com | moto  |                 1 |                  5
+</code></pre>
+
+</section>
+<section>
+
+<h3>Using views might be quite dangerous</h3>
+<p>Remember if you are using SQL View with OVER clause inside selected records, it will collect results before WHERE clause executed on this view</p>
+
+</section>
+<section>
+
+<pre><code class="language-sql">SELECT * FROM top_activity_view WHERE user_id = 1
+</code></pre>
+<pre><code>user_id |           email           |  tag  | user_comments_tag | total_tag_comments
+--------+---------------------------+-------+-------------------+--------------------
+      2 | olivia.johnson1@email.com | video |                 3 |                  7
+      2 | olivia.johnson1@email.com | moto  |                 1 |                  5
+</code></pre>
+
+</section>
+<section>
+
+<h3>Let’s go deeper!</h3>
+<p>I’ll change the scenario a little bit<br>
+Every user in my database collected some points dependent on their overall activity<br>
+Next thing is to show how much points I need to beat user ahead of me, or how much points other user needs to beat me dependent on collected points</p>
+
+</section>
+<section>
+
+<h4>LEAD &amp; LAG</h4>
+
+<pre><code class="language-sql">SELECT
+  id,
+  email,
+  points,
+  LAG(points) OVER(ORDER BY points DESC, id ASC) AS prev_user_points,
+  LEAD(points) OVER(ORDER BY points DESC, id ASC) AS next_user_points
+FROM users
+ORDER BY users.points DESC, id ASC;
+</code></pre>
+<pre><code>id |           email           | points | prev_user_points | next_user_points
+---+---------------------------+--------+------------------+------------------
+ 5 | noah.davis4@email.com     |    837 |                  |              734
+ 3 | ava.williams2@email.com   |    734 |              837 |              547
+ 2 | olivia.johnson1@email.com |    547 |              734 |              170
+ 4 | liam.jones3@email.com     |    170 |              547 |              104
+ 1 | emma.smith0@email.com     |    104 |              170 |                 
+</code></pre>
+
+</section>
+<section>
+
+<h4>I would like to display last comment_id and post_id for each user</h4>
+
+</section>
+<section>
+
+<h4>As always, subquery is an option</h4>
+
+<pre><code class="language-sql">SELECT
+  users.id,
+  email,
+  points,
+  (SELECT post_id FROM comments WHERE user_id = users.id ORDER BY created_at DESC LIMIT 1),
+  (SELECT id AS comment_id FROM comments WHERE user_id = users.id ORDER BY created_at DESC LIMIT 1)
+FROM users
+ORDER BY users.points DESC, id ASC
+</code></pre>
+<pre><code>id |           email           | points | post_id | comment_id
+---+---------------------------+--------+---------+------------
+ 5 | noah.davis4@email.com     |    837 |       9 |         15
+ 3 | ava.williams2@email.com   |    734 |       9 |         14
+ 2 | olivia.johnson1@email.com |    547 |       5 |          8
+ 4 | liam.jones3@email.com     |    170 |      10 |         17
+ 1 | emma.smith0@email.com     |    104 |       9 |         13
+</code></pre>
+
+</section>
+<section>
+
+<h2>LATERAL JOIN</h2>
+
+</section>
+<section>
+
+<h4>Let’s see how we can join this table only with one record from comments</h4>
+<pre><code class="language-sql">SELECT
+  users.id,
+  email,
+  points,
+  comments.*
+FROM users
+LEFT JOIN LATERAL (
+  SELECT
+    post_id AS post_id,
+    comments.id AS comment_id
+  FROM comments
+  WHERE comments.user_id = users.id
+  ORDER BY created_at DESC
+  LIMIT 1
+) comments ON true
+ORDER BY users.points DESC, id ASC
+</code></pre>
+<pre><code>id |           email           | points | post_id | comment_id
+---+---------------------------+--------+---------+------------
+ 5 | noah.davis4@email.com     |    837 |       9 |         15
+ 3 | ava.williams2@email.com   |    734 |       9 |         14
+ 2 | olivia.johnson1@email.com |    547 |       5 |          8
+ 4 | liam.jones3@email.com     |    170 |      10 |         17
+ 1 | emma.smith0@email.com     |    104 |       9 |         13
+</code></pre>
+
+</section>
+<section>
+
+<h3>How LATERAL JOIN works?</h3>
+<ul>
+  <li>Is executed as same as subquery, but will be executed same times as classic join</li>
+  <li>We can select more than one row from query</li>
+  <li>It can’t be used as RIGHT JOIN</li>
+</ul>
+
+</section>
+<section>
+
+<h3>Benchmarks</h3>
+<p>30 Users<br>
+137690 Comments</p>
+
+<ul>
+  <li>Subselect 92,069 ms</li>
+  <li>Lateral join 58,454 ms</li>
+</ul>
+
+</section>
+<section>
+
+<h4>Funfact</h4>
+<p>This is how we can display ‘top users comments section’ with their last comment and post<br>
+per tag with LATERAL JOIN</p>
+
+</section>
+<section>
+
+<pre><code class="language-sql">SELECT
+  t0.user_id,
+  t0.email,
+  t0.tag,
+  t0.user_comments,
+  t0.tag_comments,
+  last_comments.comment_id,
+  last_comments.post_id
+FROM
+(
+  SELECT DISTINCT ON (posts.tag, users.id, tag_comments, user_comments)
+    users.id AS user_id,
+    users.email,
+    posts.tag,
+    COUNT(comments.*) OVER(PARTITION BY comments.user_id, posts.tag) AS user_comments,
+    COUNT(comments.*) OVER(PARTITION BY posts.tag) AS tag_comments,
+    array_agg(comments.post_id) OVER(PARTITION BY comments.user_id, posts.tag) AS post_ids
+  FROM users
+  INNER JOIN comments ON comments.user_id = users.id
+  LEFT JOIN posts ON posts.id = comments.post_id
+  ORDER BY tag_comments DESC, user_comments DESC, posts.tag ASC, users.id ASC
+) t0
+INNER JOIN LATERAL (
+  SELECT
+    post_id,
+    user_id,
+    created_at,
+    id AS comment_id
+  FROM comments c WHERE t0.user_id = c.user_id AND c.post_id = ANY(t0.post_ids)
+  ORDER BY c.created_at DESC LIMIT 1
+) last_comments ON true
+</code></pre>
+
+</section>
+<section>
+
+<h4>Results</h4>
+
+<pre><code>user_id |           email           |     tag     | user_comments | tag_comments | comment_id | post_id
+--------+---------------------------+-------------+---------------+--------------+------------+---------
+      2 | olivia.johnson1@email.com | video       |             3 |            7 |          8 |       5
+      5 | noah.davis4@email.com     | video       |             2 |            7 |         12 |       7
+      3 | ava.williams2@email.com   | video       |             1 |            7 |          5 |       3
+      4 | liam.jones3@email.com     | video       |             1 |            7 |         11 |       7
+      1 | emma.smith0@email.com     | moto        |             1 |            5 |         13 |       9
+      2 | olivia.johnson1@email.com | moto        |             1 |            5 |          1 |       1
+      3 | ava.williams2@email.com   | moto        |             1 |            5 |         14 |       9
+      4 | liam.jones3@email.com     | moto        |             1 |            5 |          2 |       1
+      5 | noah.davis4@email.com     | moto        |             1 |            5 |         15 |       9
+      4 | liam.jones3@email.com     | programming |             3 |            3 |         17 |      10
+      3 | ava.williams2@email.com   | books       |             1 |            2 |          9 |       6
+      5 | noah.davis4@email.com     | books       |             1 |            2 |         10 |       6
+</code></pre>
+
+</section>
+<section>
+
+<h3>Benchmarks</h3>
+<p><strong>Only for one tag</strong></p>
+<ul>
+  <li>Subquery: Time: 53519,952 ms</li>
+  <li>Lateral join: Time: 818,429 ms</li>
+</ul>
+
+</section>
+<section>
+
+<h2>Summary</h2>
+<p>Any questions?</p>
+
+</section>
