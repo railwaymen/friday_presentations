@@ -1,0 +1,575 @@
+<!doctype html>
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Dr Jekyll && Mr Hide</title>
+
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/railwaymen.css">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/monokai.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+  </head>
+
+  <style>
+    .reveal .slides section[data-vertical-align-top]{
+      top: 25px !important;
+    }
+    .reveal .slides section[data-vertical-align-top] h2+h2 {
+      margin-top: 242px;
+    }
+    .reveal .slides section main.pros-and-cons aside {
+      display: inline-block;
+      vertical-align: top;
+      width: 45%;
+      text-align: left;
+    }
+    .reveal .slides section main.pros-and-cons aside h2 {
+      margin-bottom: 30px;
+    }
+    .reveal .slides section main.pros-and-cons ul {
+      list-style-type: none;
+      font-size: 1.3em;
+    }
+    .reveal .slides section main.pros-and-cons ul.pros li:before {
+      content: "+";
+      display: inline-block;
+      width: 15px;
+    }
+    .reveal .slides section main.pros-and-cons ul.cons li:before {
+      content: "-";
+      display: inline-block;
+      width: 15px;
+    }
+  </style>
+
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>
+            Dr Jekyll && Mr Hide
+          </h1>
+          <h3>using static site generator as a CMS engine</h3>
+        </section>
+
+
+        <!-- MR HIDE -->
+        <section>
+          <h1>A little bit of history</h1>
+          <h3>How we used to do CMSes in our company</h3>
+        </section>
+
+        <!-- COMFORTABLE MEXICAN SOFA -->
+        <section>
+          <h1>CMS == ?<h1>
+        </section>
+        <section>
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <h1 style="margin: 0;">CMS ==</h1>
+            <img src="css/images/comfortable-mexican-sofa/sofa.png" style="margin-left:20px;"/>
+          </div>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/github.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/cms-css-js-in-db.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/frontend-layout-edit.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/frontend-page-edit.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/application-layout-in-code.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/site-built-and-ready.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/activestorage-debug.png"/>
+        </section>
+        <section>
+          <img src="css/images/comfortable-mexican-sofa/activestorage-debug-zoom.png"/>
+        </section>
+        </section>
+        <section data-background="css/images/comfortable-mexican-sofa/activestorage-bug.gif">
+        </section>
+        <section data-background="css/images/comfortable-mexican-sofa/activestorage-query-from-hell.png"/>
+        </section>
+        <section data-background="css/images/comfortable-mexican-sofa/looking-for-help-in-gitter.png"/>
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>Comfortable Mexican Sofa: summary</h2>
+          <main class="pros-and-cons">
+          <aside>
+            <h3>Pros:</h3>
+            <ul class="pros">
+              <li>Fairly easy install</li>
+              <li>Up to date and well maintained</li>
+              <li>Nice admin panel</li>
+              <li>Verbose config file</li>
+            </ul>
+          </aside>
+          <aside>
+            <h3>Cons:</h3>
+            <ul class="cons">
+              <li>Comes with big bloat (bootstrap, jquery)</li>
+              <li>Authentication isn't all that great by the default (http basic auth)</li>
+              <li>Lack of authorization: no roles setup, admin can edit everything</li>
+              <li>Simple problems tend to be more difficult (page title)</li>
+              <li>Debugging external dependencies is hard (especially rails engines)</li>
+              <li>Preserves css, js and html in DB...</li>
+            </ul>
+          </aside>
+          </main>
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>Comfortable Mexican Sofa: verdict</h2>
+          <h2>Nice as fully customizable landing page, but would not integrate it with existing admin panel for any commercial app.</h2>
+        </section>
+        <!-- /COMFORTABLE MEXICAN SOFA -->
+
+        <!-- REFINERY -->
+        <section>
+          <h1>Refinery CMS</h1>
+        </section>
+        <section>
+          <img src="css/images/refinery/refinery-landing-page.png"/>
+        </section>
+        <section>
+          <!-- REFINERY INSTALL -->
+          <section>
+            <h1>Newbie friendly, but installation is 🔥</h1>
+            <h3 class="fragment">I don't mean cool, I mean <span style="color: red">🔥 HELL 🔥</span></h3>
+          </section>
+          <section>
+            <img src="css/images/refinery/guides-no-existing-rails-app.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/github-no-existing-rails-app.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/guides-old-refinery-version.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/generator-struggle.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/github-issue-generator.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/updating-struggles.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/zeitwerk-error.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/zeitwerk-eventual-fix.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/finally-installation-completed.png"/>
+          </section>
+          <!-- /REFINERY INSTALL -->
+        </section>
+        <section>
+          <!-- REFINERY USAGE -->
+          <section>
+            <h1>Using refinery cms</h1>
+            <h3 class="fragment">Here be dragons! 🐉</h3>
+          </section>
+          <section>
+            <img src="css/images/refinery/404-on-root.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/config-not-existing.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/500-on-refinery.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/fixing-sprockets-refinery.png"/>
+          </section>
+          <!-- /REFINERY USAGE -->
+        </section>
+        <section>
+          <img src="css/images/refinery/refinery-entry-page.png"/>
+        </section>
+        <section>
+          <img src="css/images/refinery/creating-the-sample-page.png"/>
+        </section>
+        <section>
+          <img src="css/images/refinery/application-layout.png"/>
+        </section>
+        <section>
+          <img src="css/images/refinery/irritating-title-on-frontend.png"/>
+        </section>
+        <section>
+          <img src="css/images/refinery/eventual-fix-for-title.png"/>
+        </section>
+        <section>
+          <!-- REFINERY IMAGES -->
+          <section>
+            <h1>Images in refinerycms</h1>
+          </section>
+          <section>
+            <img src="css/images/refinery/creating-the-sample-page.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/demo-site-wysiwyg.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/google-groups-last-resort.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/trying-to-add-file-with-wymeditor.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/sanitization-block.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/image-sanitization-fix.png"/>
+          </section>
+          <section>
+            <img src="css/images/refinery/eventual-success.png"/>
+          </section>
+          <!-- /REFINERY IMAGES -->
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>RefineryCMS: summary</h2>
+          <section>
+            <main class="pros-and-cons">
+            <aside>
+              <h3>Pros:</h3>
+              <ul class="pros">
+                <li>Extensive guides</li>
+                <li>Up to date(mostly) and well maintained</li>
+                <li>Many extensions to choose from</li>
+                <li>SEO support built in</li>
+                <li>Admin Panel built in and extensible</li>
+                <li class="fragment">Import from wordpress?</li>
+              </ul>
+            </aside>
+            <aside>
+              <h3>Cons:</h3>
+              <ul class="cons">
+                <li>Installation on Rails 6 is <span style="color: red">🔥hell🔥</span></li>
+                <li>Config templates are missing</li>
+                <li>Layout still has to be defined with a code</li>
+                <li>A lot of bloat in the code(migrations, dependencies, useless directories)</li>
+                <li>Simple things are complicated - AGAIN</li>
+                <li>Preserves css, js and html in DB...AGAIN</li>
+                <li>Outdated gem release on ruby gems</li>
+                <li>FAQ doesn’t answer basic questions(why is wysiwyg not rendering?)</li>
+              </ul>
+            </aside>
+            </main>
+          </section>
+          <section>
+            <img src="css/images/refinery/refinerycms-wordpress.png"/>
+          </section>
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>RefineryCMS: verdict</h2>
+          <h2>
+            Perhaps nice as standalone application if you're sticking to "refinery way".
+            <br/>
+            Would not integrate with existing system tho.
+          </h2>
+        </section>
+        <!-- /REFINERY -->
+
+				<!-- CUSTOM SOLUTION WITH ACTIONTEXT -->
+        <section>
+          <h1>Custom solution with ActionText</h1>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/installing-action-text.png"/>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/rich-text-in-model.png"/>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/displaying-rich-text-area.png"/>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/fixing-activestorage.png"/>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/actiontext-edit-field.png"/>
+        </section>
+        <section>
+          <img src="css/images/custom-solution/actiontext-result-field.png"/>
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>Custom solution with ActionText: summary</h2>
+          <main class="pros-and-cons">
+            <aside>
+              <h3>Pros:</h3>
+              <ul class="pros">
+                <li>Very easy install</li>
+                <li>Already part of your Rails 6 applications</li>
+                <li>File upload with ActiveStorage - again already baked into your app</li>
+                <li>No migration needed to add actiontext to existing model</li>
+                <li>Simple things are finally simple</li>
+              </ul>
+            </aside>
+            <aside>
+              <h3>Cons:</h3>
+              <ul class="cons">
+                <li>No out-of-the-box admin panel - you have to build one yourself</li>
+                <li>You're still saving html/css/js into DB...</li>
+                <li>TrixJS is not really flexible and you can't replace it</li>
+              </ul>
+            </aside>
+          </main>
+        </section>
+        <section data-vertical-align-top="true">
+          <h2>Custom solution with ActionText: verdict</h2>
+          <h2>
+            Best way to integrate simple content editing into existing app.
+            <br/>
+            However, forget about adjusting wysiwyg or changing it.
+          </h2>
+        </section>
+        <!-- /CUSTOM SOLUTION WITH ACTIONTEXT -->
+
+
+        <!-- /MR HIDE -->
+
+        <!-- DR JEKYLL -->
+        <section>
+          <h1>Dr Jekyll</h1>
+        </section>
+        <section>
+          <h1>CLI</h1>
+          <pre>
+					<code class="bash">
+bundle exec jekyll build -s SOURCE -d DESTINATION
+					</code>
+				</pre>
+        </section>
+        <section>
+          <h1>OUR USE CASE</h1>
+          <div style="display:flex; align-items: flex-start">
+            <pre>
+						<code>
+jekyll
+|-- _config.yml
+|-- _data
+| |-- footer_default.json
+| |-- footer.json
+| |-- header_default.json
+| |-- header.json
+| |-- modals_default.json
+| |-- modals.json
+| `-- theme.json
+|-- footer.de.html
+|-- footer.en.html
+|-- header.de.html
+|-- header.en.html
+|-- _includes
+| |-- footer.scss
+| |-- header.scss
+| |-- _modals.scss
+| `-- _shared.scss
+`-- theme.haml
+				</code>
+			</pre>
+            <pre style="transform: translateX(-350px); width: 300px ">
+						<code class="bash">
+app/views/static
+|-- footer.de.html
+|-- footer.en.html
+|-- header.de.html
+|-- header.en.html
+`-- theme.haml
+					</code>
+				</pre>
+        </div>
+      </section>
+      <section>
+        <h1>VARIABLES</h1>
+        <img src="./css/images/jekyll_generated_view.png" alt="" />
+        <pre>
+	<code class="yaml">
+---
+simple_variable: "I'm just a variable"
+---
+
+{{ page.simple_variable }}
+	</code>
+</pre>
+        </section>
+        <section>
+          <h1>SIMPLE JSON STORE</h1>
+          <pre><code class="json">
+// jekyll/_data/store.json
+
+{
+  "simple_variable": "Another content"
+}
+				</code></pre>
+          <pre><code>
+---
+---
+
+{{ site.data.store.simple_variable }}
+				</code></pre>
+        </section>
+        <section>
+          <h1>USING IN CONTROLLER</h1>
+          <pre><code class="ruby">
+def rebuild
+  options = {
+    "source" => File.expand_path("jekyll"),
+    "destination" => File.expand_path("app/views/static"),
+  }
+  Jekyll::Commands::Build.process(options)
+  redirect_to root_path
+end
+			</code></pre>
+        </section>
+        <section>
+          <h1>USING AS MODEL</h1>
+          <pre><code class="ruby">
+class Content
+  attr_reader :text
+
+  def initialize
+    @path = "jekyll/_data/store.json"
+    content = read
+    @text = content[:text]
+  end
+
+  def save(attributes)
+    File.write(@path, attributes.to_json)
+  end
+
+  def read
+    JSON.parse(File.open(@path).read, symbolize_names: true)
+  end
+end
+				</code></pre>
+        </section>
+        <section>
+          <h1>JEKYLL WITH WISPER</h1>
+          <section>
+            <pre>
+            <code class="ruby">
+# config/initializers/wisper.rb
+require "jekyll_builder_listener"
+
+default_options = {
+  prefix: :on,
+  async: true,
+}
+
+Wisper.subscribe(JekyllBuilderListener, **default_options)
+            </code>
+          </pre>
+          </section>
+          <section>
+            <pre>
+            <code class="ruby">
+# lib/jekyll_builder_listener.rb
+class JekyllBuilderListener
+  def self.on_element_change
+    Jekyll::Commands::Build.process({
+      "source": File.expand_path("jekyll"),
+      "destination": File.expand_path("app/views/static"),
+    })
+  end
+end
+            </code>
+          </pre>
+          </section>
+          <section>
+            <pre><code class="ruby">
+# app/controllers/pages_controller.rb
+
+  include Wisper::Publisher
+
+# in action:
+  publish(:element_change)
+          </code></pre>
+          </section>
+        </section>
+      </section>
+      <section>
+        <h1>Sample theme changer with jekyll</h1>
+        <img src="./css/images/dark_light_theme.gif" alt="" />
+      </section>
+      <section>
+        <h1>JEKYLL WITH I18N</h1>
+        <section>
+          <pre>
+              <code class="ruby">
+# config/environment.rb, lib/jekyll_builder_listener.rb
+Rails.root.join(
+  "config",
+  "locales",
+  "themes",
+  theme_name,
+  "*.yml"
+)
+.then(&Dir.method(:[]))
+.then(&I18n.backend.method(:load_translations))
+              </code>
+            </pre>
+        </section>
+        <section>
+          <img src="./css/images/I18N_jekyll.gif" alt="" />
+        </section>
+      </section>
+      <section>
+        <h1>WHAT ABOUT CACHING?</h1>
+        <pre><code class="ruby">
+# config/environments/production.rb
+config.action_view.cache_template_loading = false
+</code></pre>
+      </section>
+      <section>
+        <h1>SOMETHING ISN'T WORKING?</h1>
+        <h3>Worry not!</h3>
+        <pre><code class="bash">jekyll doctor</code></pre>
+				<img src="css/images/jekyll_doctor.png" alt=""/>
+      </section>
+      <section>
+        <h1>CONCLUSION</h1>
+        <img src="./css/images/virgin_vs_chad.png" alt="">
+      </section>
+      <!-- /DR JEKYLL -->
+    </div>
+
+    <script src="js/reveal.js"></script>
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+        dependencies: [
+        { src: 'plugin/markdown/marked.js' },
+        { src: 'plugin/markdown/markdown.js' },
+        { src: 'plugin/notes/notes.js', async: true },
+        { src: 'plugin/highlight/highlight.js', async: true }
+        ]
+      });
+    </script>
+  </body>
+</html>
