@@ -13,5 +13,5 @@ Archive with presentations given by our developers on fridays
 * 08.06.2018 [Query Objects Mapping](https://slides.railwaymen.org/query_objects_mapping/) by [Michał Szmyd](https://github.com/michalszmyd)
 * 31.08.2018 [Native Code In Web Development Stack - part 1](https://slides.railwaymen.org/native_code_in_web_dev_stack_1/pres.pdf) by [Jaroslaw Konik](https://github.com/jarkonik)
 * 19.10.2018 [Lateral Windows](https://slides.railwaymen.org/lateral_windows/) by [Michał Szmyd](https://github.com/michalszmyd)
-* 12.11.2019 [Mathematical formulas in Ruby](https://slides.railwaymen.org/mathematical_formulas_in_ruby/) by [Tomek Wielgocki](https://github.com/tiwi)
-* 22.11.2019 [Dr Jekyll and Mr. Hide](https://slides.railwaymen.org) by [Damian Kaczmarczyk](https://github.com/Vegann) and [Karol Topolski](https://github.com/ktopolski); [sample app](https://github.com/ktopolski/dr-jekyll-and-mr-hide)
+* 12.11.2019 [Mathematical formulas in Ruby](https://slides.railwaymen.org/mathematical_formulas_in_ruby/slides) by [Tomek Wielgocki](https://github.com/tiwi)
+* 22.11.2019 [Dr Jekyll and Mr. Hide](https://slides.railwaymen.org/dr_jekyll_and_mr_hide/index) by [Damian Kaczmarczyk](https://github.com/Vegann) and [Karol Topolski](https://github.com/ktopolski); [sample app](https://github.com/ktopolski/dr-jekyll-and-mr-hide)
