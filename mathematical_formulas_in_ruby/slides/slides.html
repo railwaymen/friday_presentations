@@ -1,0 +1,148 @@
+<section>
+
+<h2>Mathematical formulas in Ruby</h2>
+
+<p>Tomek Wielgocki</p>
+
+</section>
+<section>
+
+<h3>Problem</h3>
+
+<p>How to evaluate this formula:</p>
+<p class="formula">2*height*(width + length)</p>
+<p>for given values of <span class="formula">height</span>, <span class="formula">width</span> and <span class="formula">length</span>?</p>
+
+</section>
+<section>
+
+<h3>Solution #1 (naive)</h3>
+
+<p><code>Kernel#eval</code></p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">formula = '2*height*(width + length)'
+variables = { 'height' =&gt; 3, 'width' =&gt; 4, 'length' =&gt; 5 }
+
+variables.each do |key, value|
+  formula.gsub!(key, value)
+end
+
+eval(formula)
+</code></pre>
+
+</section>
+<section>
+
+<h3>Solution #2</h3>
+
+<p>Improved <code>Kernel#eval</code></p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">VALID_EXPRESSION = /\A[0-9\.\+\-\*\/\(\)]*\z/
+formula = '2*height*(width + length)'
+variables = { 'height' =&gt; 3, 'width' =&gt; 4, 'length' =&gt; 5 }
+
+variables.each do |key, value|
+  formula.gsub!(key, value)
+end
+
+if VALID_EXPRESSION =~ formula
+  eval(formula)
+else
+  raise 'Invalid formula'
+end
+</code></pre>
+
+</section>
+<section>
+
+<h3>Solution #3 (pro)</h3>
+
+<p>Abstract Syntax Tree (AST)</p>
+
+</section>
+<section>
+
+<p><img src="../images/analysis-02.png" alt=""></p>
+
+</section>
+<section>
+
+<p><img src="../images/ast-01.png" alt=""></p>
+
+</section>
+<section>
+
+<p>Do we have to implement it?</p>
+
+</section>
+<section>
+
+<p>No! We have Dentaku!</p>
+
+</section>
+<section>
+
+<pre><code class="language-ruby">formula = '2*height*(width + length)'
+variables = { 'height' =&gt; 3, 'width' =&gt; 4, 'length' =&gt; 5 }
+
+calculator = Dentaku::Calculator.new
+calculator.evaluate!(formula, variables)
+</code></pre>
+
+</section>
+<section>
+
+<p>Support for case sensitivity:</p>
+<pre><code class="language-ruby">formula = '2*HEIGHT*(width + length)'
+variables = { 'height' =&gt; 3, 'width' =&gt; 4, 'length' =&gt; 5 }
+
+calculator = Dentaku::Calculator.new(case_sensitive: true)
+calculator.evaluate!(formula, variables) # ERROR!
+</code></pre>
+
+</section>
+<section>
+
+<p>Support for functions:</p>
+<pre><code class="language-ruby">formula = 'roundup(2*radius*PI)'
+variables = { 'radius' =&gt; 4.75, 'PI' =&gt; 3.14 }
+
+calculator = Dentaku::Calculator.new
+calculator.evaluate!(formula, variables)
+</code></pre>
+
+</section>
+<section>
+
+<p>Demo</p>
+
+</section>
+<section>
+
+<h3>Contact</h3>
+
+<p><a href="https://github.com/tiwi/mathematical-formulas">https://github.com/tiwi/mathematical-formulas</a></p>
+
+<p>tomek@railwaymen.org</p>
+
+</section>
+<section>
+
+<h3>Join our team!</h3>
+
+<p><a href="https://railwaymen.org/">https://railwaymen.org/</a></p>
+
+<p>praca@railwaymen.org</p>
+
+</section>
+<section>
+
+<p>Questions?</p>
+
+</section>
