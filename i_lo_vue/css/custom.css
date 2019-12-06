@@ -1,0 +1,12 @@
+.vue {
+  color: #43B883;
+}
+
+.container {
+  display: flex;
+  align-items: center;
+}
+
+.col {
+  flex: 1;
+}
