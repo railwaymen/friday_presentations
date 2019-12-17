@@ -16,3 +16,4 @@ Archive with presentations given by our developers on fridays
 * 12.11.2019 [Mathematical formulas in Ruby](https://slides.railwaymen.org/mathematical_formulas_in_ruby/slides/) by [Tomek Wielgocki](https://github.com/tiwi)
 * 22.11.2019 [Dr Jekyll and Mr. Hide](https://slides.railwaymen.org/dr_jekyll_and_mr_hide/index) by [Damian Kaczmarczyk](https://github.com/Vegann) and [Karol Topolski](https://github.com/ktopolski); [sample app](https://github.com/ktopolski/dr-jekyll-and-mr-hide)
 * 06.12.2019 [I lo Vue](https://slides.railwaymen.org/i_lo_vue/index) by [Szymon Chodzidło](https://github.com/schodevio)
+* 13.12.2019 [Go - clean architecture](https://slides.railwaymen.org/golang_clean_architecture/index) by [Michał Szymański](https://github.com/michalsz)

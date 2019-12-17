@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+
+<head prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# article: http://ogp.me/ns/article#">
+	<meta charset="utf-8">
+
+	<title>Slides</title>
+
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="generator" content="reveal-ck 3.8.0">
+
+
+
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+	<link rel="stylesheet" href="css/reveal.css">
+	<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+	<!-- Code syntax highlighting -->
+	<link rel="stylesheet" href="lib/css/zenburn.css">
+
+	<link rel="stylesheet" href="css/reveal-ck.css">
+
+	<link rel="stylesheet" href="css/railwaymen.css">
+
+	<!-- Printing and PDF exports -->
+	<script>
+		var link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.type = 'text/css';
+		link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+		document.getElementsByTagName('head')[0].appendChild(link);
+	</script>
+
+	<!--[if lt IE 9]>
+<script src="lib/js/html5shiv.js"></script>
+<![endif]-->
+
+</head>
+
+<body>
+	<div class="reveal">
+		<!-- Any section element inside of this container is displayed as a slide -->
+		<div class="slides">
+			<div class="slides">
+				<section>
+					Golang - Clean Architecture in projects
+					<p>Michał Szymański</p>
+					<p><small>13/12/2019</small></p>
+				</section>
+				<section>
+					<section>
+						<h4>History of language</h4>
+						<p>First release November 10, 2009.</p>
+					</section>
+					<section>
+						Created and used by Google
+					</section>
+					<section>
+						Current version - 1.13
+					</section>
+					<section>
+						Example projects:
+						<br/>
+						<ul>
+						  <li>Docker</li>
+						  <li>Kubernetes</li>
+						  <li>Treafik</li>
+					    </ul>
+					</section>
+				</section>
+				<section>
+					<h4>Main Features of go</h4>
+					<ul>
+						<li>staticaly typed</li>
+						<li>compiled</li>
+						<li>garbage collection</li>
+						<li>object oriented</li>
+						<li>remote package management</li>
+					</ul>
+				</section>
+				<section>
+					<h4>Clean architecture - general rules</h4>
+					<section>
+						<span>
+							Independent of Frameworks.
+						</span>
+						<p>The architecture does not depend on the existence of some library.</p>
+
+					</section>
+					<section>
+						<span>
+							Testable
+						</span>
+						<p>The business logic can be tested without external elements ie UI, databse.</p>
+					</section>
+					<section>
+						<span>
+							Independent of UI.
+						</span>
+						<p>Independent of UI. The UI can change easily, without changing the rest of the system. </p>
+					</section>
+					<section>
+						<span>
+							Independent of databse.
+						</span>
+						<p>Can change to other databse.</p>
+					</section>
+					<section>
+						Your business logic is not related to the database.
+					</section>
+					<section>
+						<span>
+							Independent of any external services.
+						</span>
+						<p>In fact your business rules simply don’t know anything at all about the outside world.</p>
+					</section>
+				</section>
+				<section>
+					<h3>Base layers</h3>
+					<ul>
+						<li>model/entities layer</li>
+						<li>repository layer</li>
+						<li>usecase layer</li>
+						<li>delivery layer</li>
+					</ul>
+				</section>
+
+				<section>
+					<h4>Models Layer</h4>
+					<section>
+						This layer, will store any Object’s Struct
+						example. User, Article
+					</section>
+					<section>
+						They encapsulate the most general and high-level rules
+					</section>
+					<section>
+						Plain objects
+					</section>
+					<section>
+						Example code
+						<pre><code data-trim data-noescape>
+				    import "time"
+
+					type Article struct {
+						ID        int64     `json:"id"`
+						Title     string    `json:"title"`
+						Edition   string    `json:"edition"`
+						Content   string    `json:"content"`
+						UpdatedAt time.Time `json:"updated_at"`
+						CreatedAt time.Time `json:"created_at"`
+					}
+					</code></pre>
+					</section>
+					<section>
+						<pre><code>
+					func (article *Article) FullTitle() string {
+					  return article.Title + " " + article.Edition
+					}
+				        </code></pre>
+				    </section>
+				</section>
+				<section>
+					<h4>Repository Layer</h4>
+					<section>Defines interfaces for the store data</section>
+					<section>This layer will act for CRUD to database only</section>
+					<section>Source of data:
+						<br />
+						<ul>
+							<li>- database</li>
+							<li>- file system</li>
+							<li>- external API</li>
+							<ul>
+					</section>
+					<section> It implements the interfaces defined by the use case</section>
+					<section>
+						<pre><code data-trim data-noescape>
+				    package repository
+					import (
+						"database/sql"
+						_ "github.com/go-sql-driver/mysql"
+
+						"github.com/bmiles-development/shopify-game-player/player/models"
+					)
+
+					type ArticleRepo struct{
+					  DB *sql.DB
+					}
+					</code></pre>
+					</section>
+					<section>
+						<pre><code data-trim data-noescape>
+
+					func (repo *ArticleRepo) FindByID(id int64) (*models.Article, error) {
+						result, err := repo.DB.Query("SELECT * FROM articles WHERE id = ?", id)
+						if err != nil {
+							panic(err.Error()) // proper error handling instead of panic in your app
+						}
+						defer result.Close()
+
+						var article models.Article
+						for result.Next() {
+							// for each row, scan the result into our article composite object
+							err = result.Scan(&article.ID, &article.Title, &article.Content)
+							if err != nil {
+								panic(err.Error()) // proper error handling instead of panic in your app
+							}
+
+						}
+
+						return &article, err
+					}
+					</code></pre>
+					</section>
+					<section>
+						<pre><code data-trim data-noescape>
+					func (repo *ArticleRepo) Save(article *models.Article) error {
+						sqlQuery, err := repo.DB.Prepare("INSERT INTO articles(title, edition, content) VALUES(?, ?, ?)")
+						if err != nil {
+							panic(err.Error())
+						}
+
+						sqlQuery.Exec(article.Title, article.Edition, article.Content)
+
+						return err
+					}
+							</code>
+						</pre>
+					  </section>
+				    </section>
+					<section>
+
+						<section>
+							<h4>Usecase Layer</h4>
+							All business logic is in a use case
+							Entities business rules
+							then these entities are the business objects of the application
+
+							Throws business exceptions
+						</section>
+						<section>
+							<pre><code data-trim data-noescape>
+package usecase
+
+import (
+	"github.com/bmiles-development/shopify-game-player/player/models"
+	"github.com/bmiles-development/shopify-game-player/player/repository"
+)
+
+type UserUsecase struct {
+	userRepo        repository.UserRepo
+	userShopifyRepo repository.UserShopify
+}
+
+func NewUserUseCase(userRepo repository.UserRepo, userShopifyRepo repository.UserShopify) *UserUsecase {
+	return &UserUsecase{
+		userRepo:        userRepo,
+		userShopifyRepo: userShopifyRepo,
+	}
+}
+
+func (userUseCase *UserUsecase) SyncUsers(userCount int) []models.User {
+	return userUseCase.userShopifyRepo.Fetch(userCount)
+}
+
+func (userUseCase *UserUsecase) AddTagsToShopifyUsers(userID string, tags string) models.User {
+	return userUseCase.userShopifyRepo.AddTags(userID, tags)
+}
+</code></pre>
+						</section>
+					</section>
+					<section>
+						<h4>Delivery Layer</h4>
+
+						<section>
+							This layer decide how the data will presented.
+							<br />Could be as:
+							<br />
+							<ul>
+								<li>- REST API,</li>
+								<li>- HTML File</li>
+							</ul>
+						</section>
+						<section>
+							This layer also will accept the input from user.
+							Sanitize the input and sent it to Usecase layer.
+						</section>
+						<section>
+							<pre>
+				 <code>
+package controller
+
+import (
+	"net/http"
+
+	"github.com/manakuro/golang-clean-architecture/domain/model"
+	"github.com/manakuro/golang-clean-architecture/usecase/interactor"
+)
+
+type userController struct {
+	userInteractor interactor.UserInteractor
+}
+
+type UserController interface {
+	GetUsers(c Context) error
+}
+
+func NewUserController(us interactor.UserInteractor) UserController {
+	return &userController{us}
+}
+
+func (uc *userController) GetUsers(c Context) error {
+	var u []*model.User
+
+	u, err := uc.userInteractor.Get(u)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, u)
+}
+				 </code>
+				 </pre>
+						</section>
+
+					</section>
+					<section>Code Examples
+					</section>
+					<section>
+						<pre>
+				  <code>//Deliveries
+var UserLambda *userDelivery.LambdaDelivery
+
+//Usecases
+var userUC *userUsecase.UserUsecase
+
+func Init() error {
+	var err error
+
+	//Connections
+	loadEnvs()
+	dbConection := dbConnection()
+	graphqlConnection := playerConnection.GraphqlConnection{
+		Host:  os.Getenv("SHOPIFY_HOST"),
+		Token: os.Getenv("SHOPIFY_TOKEN"),
+	}
+
+	//Repos
+	userRepo := playerRepository.NewMysqlUserRepository(dbConection)
+	shopifyUserRepo := playerRepository.NewPlayerGrapqlRepository(graphqlConnection)
+	//levelRepo := levelRepository.NewMysqlLevelRepository(dbConection)
+
+	//Usecases
+	userUC := userUsecase.NewUserUseCase(*userRepo, *shopifyUserRepo)
+
+	//Delivery
+	UserLambda = userDelivery.NewLambdaDelivery(*userUC)
+
+	return err
+}
+</code>
+</pre>
+					</section>
+					<section>
+						<pre><code>
+func loadEnvs() {
+	path := calcAppPath()
+	err := godotenv.Load(path + "/.env")
+	if err != nil {
+		//log.Fatal("Error loading .env file")
+	}
+}
+
+func calcAppPath() string {
+	appPath := os.Getenv("APP_PATH")
+	if appPath != "" {
+		return appPath
+	}
+
+	cmd := exec.Command("/bin/pwd")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	parts := strings.Split(strings.TrimSpace(out.String()), string(os.PathSeparator))
+	return strings.Join(parts, string(os.PathSeparator))
+}
+
+func dbConnection() *sql.DB {
+	dbHost := os.Getenv("MYSQL_HOST")
+	dbPort := os.Getenv("MYSQL_PORT")
+	dbUser := os.Getenv("MYSQL_USER")
+	dbPassword := os.Getenv("MYSQL_PASSWORD")
+	dbName := os.Getenv("MYSQL_DATABASE")
+
+	dbCredentials := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+
+	return playerConnection.Connect(dbCredentials)
+}
+				  </code>
+				</pre>
+					</section>
+					<section>
+						Questions
+						<img src="images/questions.jpg" />
+					</section>
+
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+
+		<script>
+			(function () {
+				function extend(a, b) {
+					for (var i in b) {
+						a[i] = b[i];
+					}
+				}
+				var baseOptions = {
+					transition: 'default',
+
+					dependencies: [
+						{ src: 'lib/js/classList.js', condition: function () { return !document.body.classList; } },
+						{ src: 'plugin/markdown/marked.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+						{ src: 'plugin/markdown/markdown.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+						{ src: 'plugin/highlight/highlight.js', async: true, condition: function () { return !!document.querySelector('pre code'); }, callback: function () { hljs.initHighlightingOnLoad(); } },
+						{ src: 'plugin/zoom-js/zoom.js', async: true },
+						{ src: 'plugin/notes/notes.js', async: true }
+					]
+				};
+
+
+
+				var configOptions = { "controls": true, "progress": true, "history": true, "center": true }
+				var initializeOptions = {};
+				extend(initializeOptions, baseOptions);
+				extend(initializeOptions, configOptions);
+				Reveal.initialize(initializeOptions);
+			})();
+
+		</script>
+
+</body>
+
+</html>
